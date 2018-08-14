@@ -10,7 +10,7 @@ The "RFC" (request for comments) process is intended to provide a consistent
 and controlled path for charting the roadmap of qri. We've seen a number of 
 projects in the distributed space suffer from under-considered design choices 
 and unclear roadmapping, We're hoping strong adherence to a lightweight RFC 
-process can help mitigate these problems. Anoyone should be able get a sense of 
+process can help mitigate these problems. Anyone should be able get a sense of 
 _where qri is going_ by reading through the accepted proposals.
 
 # Motivation
@@ -18,7 +18,7 @@ _where qri is going_ by reading through the accepted proposals.
 
 I openly adknowledge this may seem premature for such an early-stage project.
 I'm intending to put this RFC place in process now to develop a design-driven
-culture that others have a clear path to contribute to the future of the 
+culture so that others have a clear path to contribute to the future of the 
 project, and replace myself as the arbiter of "what qri is" with a codified 
 principle of [rough consensus and working code](https://www.ietf.org/about/participate/tao/).
 
@@ -29,9 +29,9 @@ team members can confidently reason about, which means the core can't
 confidently tell _others_ how qri should work, which means the whole project is
 both ambiguous and without a clear path for resolving that ambiguity.
 
-To me this ambiguity is a sign that we (the core team) haven't taken aren't
-taking enough time to reach design-level consensus about how qri _should_ 
-behave, and why I think it's not too early to start this process.
+To me this ambiguity is a sign that we (the core team) have haven't taken enough 
+time to reach design-level consensus about how qri _should_ behave, and why I 
+think it's not too early to start this process.
 
 There are a few key motivations for implementing this now: 
   - develop a culture of rough consensus
@@ -49,7 +49,7 @@ For the core team adopting this RFC process will feel like three things at once:
 
 The first batch of RFCs should ideally come from me (@b5), outlining in detail
 how the various aspects of qri _should_ work (which as we know, is different 
-from how things do/not work). The process of debating these initial RFCS should 
+from how things do/not work). The process of debating these initial RFCs should 
 serve as a chance to work together to establish language, clarity & detail 
 around expected behaviours. Accepting these initial RFCs provides a new,
 consensus-driven foundation for the project that should give core team members
@@ -70,7 +70,7 @@ etc. should be collected as issues on this repo so we can start working them
 into RFCs.
 
 Finally this process should not get in the way. If done properly, day-to-day 
-development should  _accelerate_ once we've accepted enough RFCS to get 
+development should  _accelerate_ once we've accepted enough RFCs to get 
 proposals ahead of current developement.  
 It should be easier to implement a feature with confidence because implementing 
 new things should just be coding up an already-approved design document.
@@ -137,13 +137,11 @@ merged into the RFC repository as a markdown file. At that point the RFC is
     this is often the point at which many core team members first review the RFC
     in full depth.
   - The FCP lasts ten calendar days, so that it is open for at least 5 business
-    days. It is also advertised widely,
-    e.g. in [This Week in Qri](https://this-week-in-rust.org/). This way all
-    stakeholders have a chance to lodge any final objections before a decision
-    is reached.
+    days. This way all stakeholders have a chance to lodge any final objections 
+    before a decision is reached.
   - In most cases, the FCP period is quiet, and the RFC is either merged or
     closed. However, sometimes substantial new arguments or ideas are raised,
-    the FCP is canceled, and the RFC goes back into development mode.
+    the FCP is cancelled, and the RFC goes back into development mode.
 
 ### The RFC life-cycle
 [The RFC life-cycle]: #the-rfc-life-cycle
