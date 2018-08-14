@@ -16,15 +16,15 @@
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-<!-- Explain the proposal as if it was already included in the language and you were teaching it to a qri _developer_. That generally means:
+<!-- Explain the proposal as if it was already included in the language and you were teaching it to a Qri _developer_. That generally means:
 
 - Introducing new named concepts.
 - Explaining the feature largely in terms of examples.
-- Explaining how qri developer should *think* about the feature, and how it should impact the way they use qri. It should explain the impact as concretely as possible.
+- Explaining how Qri developer should *think* about the feature, and how it should impact the way they use Qri. It should explain the impact as concretely as possible.
 - If applicable, provide sample error messages, deprecation warnings, or migration guidance.
-- If applicable, describe the differences between teaching this to a qri developer vs a qri _user_.
+- If applicable, describe the differences between teaching this to a Qri developer vs a Qri _user_.
 
-For implementation-oriented RFCs (e.g. for qri codebase internals), this section should focus on how contributors should think about the change, and give examples of its concrete impact. For policy RFCs, this section should provide an example-driven introduction to the policy, and explain its impact in concrete terms. -->
+For implementation-oriented RFCs (e.g. for Qri codebase internals), this section should focus on how contributors should think about the change, and give examples of its concrete impact. For policy RFCs, this section should provide an example-driven introduction to the policy, and explain its impact in concrete terms. -->
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
@@ -64,7 +64,7 @@ This section is intended to encourage you as an author to think about the lesson
 If there is no prior art, that is fine - your ideas are interesting to us whether they are brand new or if it is an adaptation from other languages.
 
 Note that while precedent set by other projects is some motivation, it does not on its own motivate an RFC.
-Please also take into consideration that rust sometimes intentionally diverges from common language features. -->
+Please also take into consideration that Qri sometimes intentionally diverges from other projects. -->
 
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
