@@ -1,22 +1,22 @@
-- Feature Name: (fill me in with a unique ident, my_awesome_feature)
-- Start Date: (fill me in with today's date, YYYY-MM-DD)
-- RFC PR: (leave this empty)
-- Issue: (leave this empty)
+- Feature Name: <!-- (fill me in with a unique ident, my_awesome_feature) -->
+- Start Date: <!-- (fill me in with today's date, YYYY-MM-DD) -->
+- RFC PR: <!-- (leave this empty) -->
+- Issue: <!-- (leave this empty) -->
 
 # Summary
 [summary]: #summary
 
-One paragraph explanation of the feature.
+<!-- One paragraph explanation of the feature. -->
 
 # Motivation
 [motivation]: #motivation
 
-Why are we doing this? What use cases does it support? What is the expected outcome?
+<!-- Why are we doing this? What use cases does it support? What is the expected outcome? -->
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-Explain the proposal as if it was already included in the language and you were teaching it to a qri _developer_. That generally means:
+<!-- Explain the proposal as if it was already included in the language and you were teaching it to a qri _developer_. That generally means:
 
 - Introducing new named concepts.
 - Explaining the feature largely in terms of examples.
@@ -24,18 +24,18 @@ Explain the proposal as if it was already included in the language and you were 
 - If applicable, provide sample error messages, deprecation warnings, or migration guidance.
 - If applicable, describe the differences between teaching this to a qri developer vs a qri _user_.
 
-For implementation-oriented RFCs (e.g. for qri codebase internals), this section should focus on how contributors should think about the change, and give examples of its concrete impact. For policy RFCs, this section should provide an example-driven introduction to the policy, and explain its impact in concrete terms.
+For implementation-oriented RFCs (e.g. for qri codebase internals), this section should focus on how contributors should think about the change, and give examples of its concrete impact. For policy RFCs, this section should provide an example-driven introduction to the policy, and explain its impact in concrete terms. -->
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-This is the technical portion of the RFC. Explain the design in sufficient detail that:
+<!-- This is the technical portion of the RFC. Explain the design in sufficient detail that:
 
 - Its interaction with other features is clear.
 - It is reasonably clear how the feature would be implemented.
 - Corner cases are dissected by example.
 
-The section should return to the examples given in the previous section, and explain more fully how the detailed proposal makes those examples work.
+The section should return to the examples given in the previous section, and explain more fully how the detailed proposal makes those examples work. -->
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -45,14 +45,14 @@ Why should we *not* do this?
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
-- Why is this design the best in the space of possible designs?
+<!-- - Why is this design the best in the space of possible designs?
 - What other designs have been considered and what is the rationale for not choosing them?
-- What is the impact of not doing this?
+- What is the impact of not doing this? -->
 
 # Prior art
 [prior-art]: #prior-art
 
-Discuss prior art, both the good and the bad, in relation to this proposal.
+<!-- Discuss prior art, both the good and the bad, in relation to this proposal.
 A few examples of what this can include are:
 
 - Does this feature exist in other places and what experience have their community had?
@@ -64,11 +64,11 @@ This section is intended to encourage you as an author to think about the lesson
 If there is no prior art, that is fine - your ideas are interesting to us whether they are brand new or if it is an adaptation from other languages.
 
 Note that while precedent set by other projects is some motivation, it does not on its own motivate an RFC.
-Please also take into consideration that rust sometimes intentionally diverges from common language features.
+Please also take into consideration that rust sometimes intentionally diverges from common language features. -->
 
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-- What parts of the design do you expect to resolve through the RFC process before this gets merged?
+<!-- - What parts of the design do you expect to resolve through the RFC process before this gets merged?
 - What parts of the design do you expect to resolve through the implementation of this feature before stabilization?
-- What related issues do you consider out of scope for this RFC that could be addressed in the future independently of the solution that comes out of this RFC?
+- What related issues do you consider out of scope for this RFC that could be addressed in the future independently of the solution that comes out of this RFC? -->
