@@ -47,7 +47,14 @@ writer.
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-Here's a quick example of creating a reader from scratch & reading it's values:
+Creating a structured I/O stream requires a minimum of three things:
+- a stream of raw data bytes
+- the _data format_ of that stream (eg: JSON)
+- a data schema
+
+The Format & Schema are specified in the passed-in structure, the byte stream
+is an io.Reader or io.Writer primitive. Here's a quick example of creating a 
+reader from scratch & reading it's values:
 ```golang
   import (
     "strings"
@@ -82,17 +89,8 @@ Here's a quick example of creating a reader from scratch & reading it's values:
   fmt.Println(err.Error()) // EOF
 ```
 
-Creating a structured I/O stream requires a minimum of three things:
-- a stream of raw data bytes
-- the _data format_ of that stream (eg: JSON)
-- a data schema
-
-The Format & Schema are specified in the passed-in structure, the byte stream
-is an io.Reader or io.Writer primitive
-
 ### Stream
-In this document we'll use _stream_ to refer to refer to both a _reader_ and a
-_writer_ collectively.
+A _stream_ refers to refer to both a _reader_ and a _writer_ collectively.
 
 ### Entries
 Traditional "unstructured" streams often use byte arrays as the basic unit that
@@ -134,9 +132,8 @@ encountered instead of using silent fallbacks.
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-
+Entry is a "row" of a dataset:
 ```golang
-// Entry is a "row" of a dataset
 type Entry struct {
   // Index represents this entry's numeric position in a dataset
   // this index may not necessarily refer to the overall position within 
@@ -150,8 +147,8 @@ type Entry struct {
 }
 ```
 
+EntryWriter is a generalized interface for writing structured data:
 ```golang
-// EntryWriter is a generalized interface for writing structured data
 type EntryWriter interface {
   // Structure gives the structure being written
   Structure() *dataset.Structure
@@ -163,8 +160,8 @@ type EntryWriter interface {
 }
 ```
 
+EntryReader is a generalized interface for reading Ordered Structured Data:
 ```golang
-// EntryReader is a generalized interface for reading Ordered Structured Data
 type EntryReader interface {
   // Structure gives the structure being read
   Structure() *dataset.Structure
@@ -173,8 +170,8 @@ type EntryReader interface {
 }
 ```
 
+EntryReadWriter combines EntryWriter and EntryReader behaviors:
 ```golang
-// EntryReadWriter combines EntryWriter and EntryReader behaviors
 type EntryReadWriter interface {
   // Structure gives the structure being read and written
   Structure() *dataset.Structure
@@ -200,7 +197,8 @@ doing work when we could instead be doing something else.
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
-Given that we
+Given that we've already written this, the time for considering alternatives
+should be in future a RFC.
 
 # Prior art
 [prior-art]: #prior-art
