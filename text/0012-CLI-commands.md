@@ -633,7 +633,7 @@ explicitly close a connection to a peer
 explicitly close a connection to a peer
 
 ```
-qri peers disconnect [flags]
+qri peers disconnect [flags] 
 ```
 
 ### Options
@@ -656,7 +656,7 @@ The peers info command returns a peer's profile information. The default
 format is yaml.
 
 ```
-qri peers info [flags]
+qri peers info [flags] <peername>
 ```
 
 ### Examples
@@ -768,7 +768,7 @@ publish dataset info to the registry
 publish dataset info to the registry
 
 ```
-qri registry publish [flags]
+qri registry publish [flags] <dataset_reference>
 ```
 
 ### Examples
@@ -796,7 +796,7 @@ remove dataset info from the registry
 remove dataset info from the registry
 
 ```
-qri registry unpublish [flags]
+qri registry unpublish [flags] <dataset_reference>
 ```
 
 ### Examples
@@ -836,7 +836,7 @@ In the future we’ll add a flag that’ll force immediate removal of a dataset 
 both qri & IPFS. Promise.
 
 ```
-qri remove [flags]
+qri remove [flags] <dataset_reference>
 ```
 
 ### Examples
@@ -871,7 +871,7 @@ confuse anyone who has added your dataset before the change. Try to keep
 renames to a minimum.
 
 ```
-qri rename [flags]
+qri rename [flags] <dataset_reference>
 ```
 
 ### Examples
@@ -892,14 +892,14 @@ qri rename [flags]
 <a id='qri_render'></a>
 ## qri render
 
-execute a template against a dataset
+Execute a template against a dataset
 
 ### Synopsis
 
-the most common use for render is to generate html from a qri dataset
+You can use templates
 
 ```
-qri render [flags]
+qri render [flags] <dataset_reference>
 ```
 
 ### Examples
@@ -944,7 +944,7 @@ Currently you can only save changes to datasets that you control. Tools for
 collaboration are in the works. Sit tight sportsfans.
 
 ```
-qri save [flags]
+qri save [flags] <dataset_reference>
 ```
 
 ### Examples
@@ -974,14 +974,21 @@ qri save [flags]
 <a id='qri_search'></a>
 ## qri search
 
-Search qri
+Search qri nodes for datasets.
 
 ### Synopsis
 
-Search datasets & peers that match your query
+Search datasets & peers that match your query. Search pings the qri registry. Any dataset that has been published to the registry is available for search.
 
 ```
-qri search [flags]
+qri search [flags] <search term>
+```
+
+### Examples
+
+```
+  # search 
+  $ qri search "annual population"
 ```
 
 ### Options
@@ -1043,11 +1050,20 @@ qri setup [flags]
 <a id='qri_use'></a>
 ## qri use
 
-select datasets for use with other commands
+Select datasets for use with other commands
 
 ### Synopsis
 
-select datasets for use with other commands
+Select datasets for use with other commands. Use commands will work with:
+
+body
+diff
+export
+get
+info
+log
+render
+validate
 
 ```
 qri use [flags]
@@ -1158,7 +1174,7 @@ qri version [flags]
 # Drawbacks
 [drawbacks]: #drawbacks
 
-Why should we *not* do this?
+Structuring qri around a command line client as our base implementation will mean that CLI features routinely outpace other ways of interacting with qri (like the API and subsequently the frontend). To mitigate this it's important that we view any proposed feature from perspectives other than just the CLI, and work to maintain parity across our outward facing interfaces wherever possible & reasonable.
 
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
@@ -1167,8 +1183,12 @@ Why should we *not* do this?
 - What other designs have been considered and what is the rationale for not choosing them?
 - What is the impact of not doing this? -->
 
+
+
 # Prior art
 [prior-art]: #prior-art
+
+[kubernetes](https://github.com/kubernetes/kubernetes/tree/master/cmd/kubeadm/app/cmd)
 
 <!-- Discuss prior art, both the good and the bad, in relation to this proposal.
 A few examples of what this can include are:
