@@ -835,9 +835,10 @@ commands to control how your datasets are published to registries, opting out
 on a dataset-by-dataset basis.
 
 By default qri is configured to publish to https://registry.qri.io,
-the main public collection of datasets & peers. "qri add" and "qri update"
+the main public collection of datasets & peers. "qri new" and "qri update"
 default to publishing to a registry as part of dataset creation unless run 
-with the "no-registry" flag.
+with the "no-publish" flag. Published datasets that are under 20MBs will be
+backed up by the Qri registry.
 
 Unpublished dataset info will be held locally so you can still interact
 with it. And your datasets will be available to others peers when you run 
