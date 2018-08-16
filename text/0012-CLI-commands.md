@@ -587,7 +587,7 @@ Create a new dataset
 
 
 New creates a dataset from data you supply. Please note that all data added
-to qri is made public on the distributed web when you run qri connect
+to Qri is made public on the distributed web when you run qri connect
 
 When adding data, you can supply metadata and dataset structure, but it’s not
 required. qri does what it can to infer the details you don’t provide.
@@ -597,8 +597,13 @@ qri currently supports three data formats:
 - CBOR (Concise Binary Object Representation)
 
 Once you’ve added data, you can use the export command to pull the data out of
-qri, change the data outside of qri, and use the save command to record those
-changes to qri.
+Qri, change the data outside of Qri, and use the save command to record those
+changes to Qri.
+
+Datasets added to Qri using `new` are published to the registry by default.
+Use the `--no-publish` flag to not publish this dataset to the registry. For
+more information on the registry and why it's important check out the [registry
+section](#qri_registry).
 
 ```
 qri new [flags]
@@ -622,7 +627,7 @@ create a dataset with a dataset data file:
   -h, --help              help for new
   -m, --message string    commit message
       --private           make dataset private. WARNING: not yet implimented. Please refer to https://github.com/qri-io/qri/issues/291 for updates
-  -p, --publish           publish this dataset to the registry
+  -p, --no-publish        do not publish this dataset to the registry
       --secrets strings   transform secrets as comma separated key,value,key,value,... sequence
   -t, --title string      commit title
 ```
