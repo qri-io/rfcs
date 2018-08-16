@@ -65,7 +65,7 @@ formal RFCs.
 
 At the same time, this should also be a chance for others to start documenting
 ideas we've been kicking around for enhancing qri. Things we've discussed in the
-past like like skylark modules, simulation testing, new file format support, 
+past like skylark modules, simulation testing, new file format support, 
 etc. should be collected as issues on this repo so we can start working them
 into RFCs.
 
