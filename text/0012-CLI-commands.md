@@ -50,6 +50,22 @@ The Qri CLI commands are as follows:
 * [qri validate](#qri_validate)  - Show schema validation errors
 * [qri version](#qri_version)  - Print the version number
 
+We are using the cobra package to create each command.
+
+Each command has a struct `[name_of_command]Options` (eg `ValidateOptions`)
+
+Each option struct requires `Complete`, `Validate`, and `Run` methods.
+
+The `Complete` method fills in any parameters needed for the command to run. It 
+also adds the command arguments to the option struct.
+
+The `Validate` methods ensures that the parameters added to the option struct
+are all valid, and returns an error describing the problem if the options are
+invalid.
+
+The `Run` method calls to the more core Qri functions to run the command using
+the parameters in the options struct.
+
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
@@ -428,28 +444,46 @@ qri get [flags] <dataset_reference> <dataset_reference2> ...
 <a id='qri_info'></a>
 ## qri info
 
-show summarized description of a dataset
+Show summarized description of a dataset
 
 ### Synopsis
 
-info describes datasets
+Info describes datasets. By default, it will return the peername, dataset name, 
+the network, the dataset hash, the file size, the length of the datasets, 
+and the validation errors.
+
+Using the `--format` flag, you can get output in json. This will return a json
+representation of the dataset, without the dataset body, identical to 
+`qri get --format json`.
+
+To get info on a peer's dataset, you must be running `qri connect` in a separate 
+terminal window.
 
 ```
-qri info [flags]
+qri info [flags] <dataset_reference>
 ```
 
 ### Examples
 
 ```
-  get info for b5/comics:
-  $ qri info b5/comics
+  # get info for my dataset:
+  qri info me/annual_pop
 
-  get info for a dataset at a specific version:
-  $ qri info me@/ipfs/QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn
+  # get info for a dataset at a specific version:
+  qri info me@/ipfs/QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn
 
   or
 
-  $ qri info me/comics@/ipfs/QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn
+  qri info me/comics@/ipfs/QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn
+
+  # get info in json format
+  qri info -f json me/annual_pop
+
+  # to get info on a peer's dataset, spin up your qri node
+  qri connect
+
+  # then, in a separate window, request the info from peer b5
+  qri info b5/comics
 ```
 
 ### Options
@@ -464,15 +498,18 @@ qri info [flags]
 <a id='qri_list'></a>
 ## qri list
 
-show a list of datasets
+Show a list of datasets
 
 ### Synopsis
 
 
-list shows lists of datasets, including names and current hashes. 
+List shows lists of datasets, including names and current hashes. 
 
 The default list is the latest version of all datasets you have on your local 
 qri repository.
+
+When used in conjuction with `qri connect`, list can list a peer's dataset. You
+must have `qri connect` running in a separate terminal window.
 
 ```
 qri list [flags]
@@ -481,8 +518,15 @@ qri list [flags]
 ### Examples
 
 ```
-  show all of your datasets:
-  $ qri list
+  # show all of your datasets:
+  qri list
+
+  # to view the list of your peer's dataset,
+  # in one terminal window:
+  qri connect
+
+  # in a separate terminal window, to show all of b5's datasets:
+  qri list b5
 ```
 
 ### Options
@@ -588,11 +632,16 @@ create a dataset with a dataset data file:
 <a id='qri_peers'></a>
 ## qri peers
 
-commands for working with peers
+Commands for working with peers
 
 ### Synopsis
 
-commands for working with peers
+The `peers` commands allow you to interact with other peers on the Qri network.
+In order for these commands to work, you must be running a Qri node. This 
+node allows you to communicate on the network. To spin up a Qri node, run
+`qri connect` in a separate terminal. This will connect you to the network, 
+until you choose to close the connection by ending the session or closing 
+the terminal.
 
 ### Options
 
@@ -605,14 +654,31 @@ commands for working with peers
 <a id='qri_peers_connect'></a>
 ## qri peers connect
 
-connect to a peer
+Connect to a specific peer
 
 ### Synopsis
 
-connect to a peer
+Connect to a peer using a peername, peer ID, or multiaddress. Qri will use this name, id, or address
+to find a peer to which it has not automatically connected. 
+
+You must have a Qri node running (`qri connect`) in a separate terminal. You will only be able 
+to connect to a peer that also has spun up it's own Qri node.
+
+A multiaddress, or multiaddr, is the most specific way to refer to a peer's location, and is therefore
+the most sure-fire way to connect to a peer. 
 
 ```
-qri peers connect [flags]
+qri peers connect <peername, peer_id, or multiaddr>
+```
+
+### Example
+
+```
+  # spin up a Qri node
+  qri connect
+
+  # in a separate terminal, connect to a specific peer using a multiaddr
+  qri peers connect /ip4/192.168.0.194/tcp/4001/ipfs/QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn
 ```
 
 ### Options
@@ -622,18 +688,37 @@ qri peers connect [flags]
 ```
 
 
-
 <a id='qri_peers_disconnect'></a>
 ## qri peers disconnect
 
-explicitly close a connection to a peer
+Explicitly close a connection to a peer
 
 ### Synopsis
 
-explicitly close a connection to a peer
+Explicitly close a connection to a peer using a peername, peer id, or multiaddress. 
+
+You can close all connections to the Qri network by ending your Qri node session. 
+
+Use the disconnect command when you want to stay connected to the network, but want to 
+close your connection to a specific peer. This could be because that connection is hung,
+the connection is pulling too many resources, or because you simply no longer need an
+explicit connection.  This is not the same as blocking a peer or connection.
+
+Once you close a connection to a peer, you or that peer can immediately open another 
+connection.
+
+You must have `qri connect` running in another terminal.
+
 
 ```
-qri peers disconnect [flags] 
+qri peers disconnect <peername, peer_id, or multiaddr>
+```
+
+### Examples
+
+```
+  # disconnect from a peer using a multiaddr
+  qri peers disconnect /ip4/192.168.0.194/tcp/4001/ipfs/QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn
 ```
 
 ### Options
@@ -647,13 +732,17 @@ qri peers disconnect [flags]
 <a id='qri_peers_info'></a>
 ## qri peers info
 
-Get info on a qri peer
+Get info on a Qri peer
 
 ### Synopsis
 
 
 The peers info command returns a peer's profile information. The default
 format is yaml.
+
+Using the `--verbose` flag, you can also view a peer's network information.
+
+You must have `qri connect` running in another terminal.
 
 ```
 qri peers info [flags] <peername>
@@ -662,11 +751,15 @@ qri peers info [flags] <peername>
 ### Examples
 
 ```
-  show info on a peer named "b5":
-  $ qri peers info b5
+  # spin up a Qri node in a separate terminal
+  qri connect
 
-  show info in json:
-  $ qri peers info b5 --format json
+  # then 
+  # show info on a peer named "b5":
+  qri peers info b5
+
+  # show info in json:
+  qri peers info b5 --format json
 ```
 
 ### Options
@@ -682,16 +775,17 @@ qri peers info [flags] <peername>
 <a id='qri_peers_list'></a>
 ## qri peers list
 
-list known qri peers
+List known qri peers
 
 ### Synopsis
 
 
-lists the peers your qri node has seen before. The peers list command will
-show the cached list of peers, unless you are currently running the connect
-command in the background or in another terminal window.
+Lists the peers to which your Qri node is connected. 
 
-(run 'qri help connect' for more information about the connect command) 
+You must have `qri connect` running in another terminal.
+
+To find include peers that are not online, but to which your node has previously been 
+connected, use the `--cached` flag.
 
 ```
 qri peers list [flags]
@@ -700,11 +794,14 @@ qri peers list [flags]
 ### Examples
 
 ```
-  to list qri peers:
-  $ qri peers list
+  # spin up a Qri node
+  qri connect
 
-  to ensure you get a cached version of the list:
-  $ qri peers list --cached
+  # thenin a separate terminal, to list qri peers:
+  qri peers list
+
+  # to ensure you get a cached version of the list:
+  qri peers list --cached
 ```
 
 ### Options
@@ -761,11 +858,17 @@ $ qri config set registry.location ""
 <a id='qri_registry_publish'></a>
 ## qri registry publish
 
-publish dataset info to the registry
+Publish dataset info to the registry
 
 ### Synopsis
 
-publish dataset info to the registry
+Publishes the dataset information onto the registry. There will be a record
+of your dataset on the registry, and if your dataset is less than 20mbs, 
+Qri will back your dataset up onto the registry.
+
+Published datasets can be found by other peers using the `qri search` command.
+
+Datasets are by default published to the registry when they are created.
 
 ```
 qri registry publish [flags] <dataset_reference>
@@ -789,11 +892,15 @@ qri registry publish [flags] <dataset_reference>
 <a id='qri_registry_unpublish'></a>
 ## qri registry unpublish
 
-remove dataset info from the registry
+Remove dataset info from the registry
 
 ### Synopsis
 
-remove dataset info from the registry
+Unpublish will remove the reference to your dataset from the registry. If 
+you dataset was previously backed up onto the registry, this backup will 
+be removed.
+
+This dataset will no longer show up in search results. 
 
 ```
 qri registry unpublish [flags] <dataset_reference>
@@ -822,7 +929,7 @@ remove a dataset from your local repository
 ### Synopsis
 
 
-Remove gets rid of a dataset from your qri node. After running remove, qri will 
+Remove gets rid of a dataset from your Qri node. After running remove, Qri will 
 no longer list your dataset as being available locally. By default, remove frees
 up the space taken up by the dataset, but not right away. The IPFS repo that’s 
 storing the data will need to garbage-collect that data when it’s good & ready, 
@@ -830,10 +937,10 @@ which could be anytime. If you’re running low on space, garbage collection wil
 be sooner. 
 
 Keep in mind that by default your IPFS repo is capped at 10GB in size, if you
-adjust this cap using IPFS, qri will respect it.
+adjust this cap using IPFS, Qri will respect it.
 
-In the future we’ll add a flag that’ll force immediate removal of a dataset from
-both qri & IPFS. Promise.
+Use the `--free` flag to force immediate removal of a dataset from both qri & 
+IPFS to free up the space that was taken up by that dataset.
 
 ```
 qri remove [flags] <dataset_reference>
@@ -850,6 +957,7 @@ qri remove [flags] <dataset_reference>
 
 ```
   -h, --help   help for remove
+  -f, --free   immediately free up space that was taken up by this dataset
 ```
 
 
@@ -857,7 +965,7 @@ qri remove [flags] <dataset_reference>
 <a id='qri_rename'></a>
 ## qri rename
 
-change the name of a dataset
+Change the name of a dataset
 
 ### Synopsis
 
@@ -896,7 +1004,14 @@ Execute a template against a dataset
 
 ### Synopsis
 
-You can use templates
+You can use html templates, formatted in the go/html template style, 
+to render visualizations from your dataset. These visualizations can be charts, 
+graphs, or just display your dataset in a different format.
+
+Use the `--output` flag to save the rendered html to a file.
+
+Use the `--template` flag to use a custom template. If no template is
+provided, Qri will render the dataset with a default template.
 
 ```
 qri render [flags] <dataset_reference>
@@ -905,7 +1020,7 @@ qri render [flags] <dataset_reference>
 ### Examples
 
 ```
-  render a dataset called me/schools:
+  render a dataset called me/schools to the file school.html:
   $ qri render -o=schools.html me/schools
 
   render a dataset with a custom template:
@@ -928,20 +1043,25 @@ qri render [flags] <dataset_reference>
 <a id='qri_save'></a>
 ## qri save
 
-save changes to a dataset
+Save changes to a dataset
 
 ### Synopsis
 
 
 Save is how you change a dataset, updating one or more of data, metadata, and 
 structure. You can also update your data via url. Every time you run save, 
-an entry is added to your dataset’s log (which you can see by running “qri log 
-[ref]”). Every time you save, you can provide a message about what you changed 
-and why. If you don’t provide a message 
-qri will automatically generate one for you.
+an entry is added to your dataset’s log (which you can see by running `qri log 
+<dataset_reference>`). Every time you save, you can provide a message about what 
+you changed and why. If you don’t provide a message 
+Qri will automatically generate one for you.
 
-Currently you can only save changes to datasets that you control. Tools for 
-collaboration are in the works. Sit tight sportsfans.
+When you make an update and save a dataset that you originally added from a different
+peer, the dataset gets renamed from `peers_name/dataset_name` to `my_name/dataset_name`.
+
+The `--message` and `--title` flags allow you to add a commit message and title 
+to the save.
+
+Use `--no-publish` to not publish this version of the dataset to the Qri registry.
 
 ```
 qri save [flags] <dataset_reference>
@@ -964,7 +1084,7 @@ qri save [flags] <dataset_reference>
   -f, --file string       dataset data file (yaml or json)
   -h, --help              help for save
   -m, --message string    commit message for save
-  -p, --publish           publish this dataset to the registry
+  -p, --no-publish        do not publish this dataset to the registry
       --secrets strings   transform secrets as comma separated key,value,key,value,... sequence
   -t, --title string      title of commit message for save
 ```
@@ -978,7 +1098,10 @@ Search qri nodes for datasets.
 
 ### Synopsis
 
-Search datasets & peers that match your query. Search pings the qri registry. Any dataset that has been published to the registry is available for search.
+Search datasets & peers that match your query. Search pings the qri registry. Any dataset 
+that has been published to the registry is available for search.
+
+Search will match datasets based on the meta title, keyword, and theme.
 
 ```
 qri search [flags] <search term>
@@ -1008,7 +1131,7 @@ initialize qri and IPFS repositories, provision a new qri ID
 ### Synopsis
 
 
-Setup is the first command you run to get a fresh install of qri. If you’ve 
+Setup is the first command you run to get a fresh install of Qri. If you’ve 
 never run qri before, you’ll need to run setup before you can do anything. 
 
 Setup does a few things:
@@ -1016,9 +1139,12 @@ Setup does a few things:
 - provisions a new qri ID
 - create an IPFS repository if one doesn’t exist
 
-This command is automatically run if you invoke any qri command without first 
-running setup. If setup has already been run, by default qri won’t let you 
+This command is automatically run if you invoke any Qri command without first 
+running setup. If setup has already been run, by default Qri won’t let you 
 overwrite this info.
+
+Use the `--remove` to remove your Qri repo. This deletes your entire repo, 
+including all your datasets, and de-registers your peername from the registry.
 
 ```
 qri setup [flags]
@@ -1054,7 +1180,16 @@ Select datasets for use with other commands
 
 ### Synopsis
 
-Select datasets for use with other commands. Use commands will work with:
+Select datasets for use with other commands. 
+
+Run the `use` command to 'save' a reference to a specific dataset. This dataset
+will be referenced for future commands, if no dataset reference is explicitly
+given for those commands.
+
+We created this command to ease the typing/copy and pasting burden while using
+Qri to explore a dataset.
+
+Dataset references saved using the `use` command will work with:
 
 body
 diff
@@ -1072,15 +1207,15 @@ qri use [flags]
 ### Examples
 
 ```
-  use dataset me/dataset_name, then get meta.title:
-  $ qri data me/dataset_name
-  $ qri get meta.title
+  # use dataset me/dataset_name, then get meta.title:
+  qri use me/dataset_name
+  qri get meta.title
 
-  clear current selection:
-  $ qri use --clear
+  # clear current selection:
+  qri use --clear
 
-  show current selected dataset references:
-  $ qri use --list
+  # show current selected dataset references:
+  qri use --list
 ```
 
 ### Options
@@ -1096,7 +1231,7 @@ qri use [flags]
 <a id='qri_validate'></a>
 ## qri validate
 
-show schema validation errors
+Show schema validation errors
 
 ### Synopsis
 
@@ -1127,6 +1262,9 @@ schema for dataset "me/foo"
 Using validate this way is a great way to see how changes to data or schema
 will affect a dataset before saving changes to a dataset.
 
+You can get the current schema of a dataset by running the `qri get structure.schema`
+command.
+
 Note: --body and --schema flags will override the dataset if both flags are provided.
 
 ```
@@ -1136,8 +1274,14 @@ qri validate [flags]
 ### Examples
 
 ```
-  show errors in an existing dataset:
-  $ qri validate b5/comics
+  # show errors in an existing dataset:
+  qri validate b5/comics
+
+  # validate a new body against an existing schema
+  qri validate --body new_data.csv me/annual_pop
+
+  # validate data against a new schema
+  qri validate --body data.csv --schema schema.json
 ```
 
 ### Options
@@ -1153,11 +1297,12 @@ qri validate [flags]
 <a id='qri_version'></a>
 ## qri version
 
-print the version number
+Print the version number
 
 ### Synopsis
 
-qri uses semantic versioning.
+Qri uses semantic versioning.
+
 For updates & further information check https://github.com/qri-io/qri/releases
 
 ```
@@ -1183,6 +1328,9 @@ Structuring qri around a command line client as our base implementation will mea
 - What other designs have been considered and what is the rationale for not choosing them?
 - What is the impact of not doing this? -->
 
+This is less a section about rationale and alternatives of why change to this structure, and more an explanation why we found this refactoring so positive.
+
+The `Complete`, `Validate`, `Run`, structure of our commands is taken from [kubernetes](https://github.com/kubernetes/kubernetes/tree/master/cmd/kubeadm/app/cmd). This allows us to test each part of the command individually. When we refactored from our previous structure, to this current structure, our testing and the clarity of our error messages jumped up.
 
 
 # Prior art
@@ -1209,4 +1357,5 @@ Please also take into consideration that Qri sometimes intentionally diverges fr
 
 <!-- - What parts of the design do you expect to resolve through the RFC process before this gets merged?
 - What parts of the design do you expect to resolve through the implementation of this feature before stabilization?
-- What related issues do you consider out of scope for this RFC that could b
+- What related issues do you consider out of scope for this RFC that could b -->
+I assume that these commands will go through many orientations as we learn how peers use Qri and other functionalities they might need.
