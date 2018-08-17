@@ -12,18 +12,18 @@ we'd hope, or less complete than we'd expect from a new RFC.
 [summary]: #summary
 
 Structured I/O defines interfaces for reading & writing streams of parsed 
- _entries_, which are elements of dynamic-yet-structred data such as JSON, CBOR,
-or CSV documents. Structured reader & writer interfaces combine a byte stream, 
-data format and schema to create entry readers & writers that produce & consume 
-entries of parsed primtive types instead of bytes. Structured I/O streams can be 
-composed & connected to form the basis of rich data communication capable of 
-spanning across formats.
+ _entries_, which are elements of arbitraty-yet-structured data such as JSON, 
+CBOR, or CSV documents. Structured reader & writer interfaces combine a byte 
+stream, data format and schema to create entry readers & writers that produce & 
+consume entries of parsed primtive types instead of bytes. Structured I/O 
+streams can be composed & connected to form the basis of rich data communication 
+capable of spanning across formats.
 
 # Motivation
 [motivation]: #motivation
 
 One of the prime goals of qri is to to be able to make any dataset comparable to
-another dataset. Datasets are also intended to be a generic-yet-structured
+another dataset. Datasets are also intended to be a arbitrary-yet-structured
 document format, able to support all sorts of data with varying degrees of
 quality. These requirements mean datasets must be able to define their own 
 schemas, and may include data that violates that schema.
@@ -59,7 +59,7 @@ Orienting our primitives around _streams_ helps manage concerns created by both
 network latency and data volume. By orienting qri around stream programming 
 we set ourselves up for success for programming in a distributed context.
 
-Structured I/O builds on foundations set fourth in the _structure_ portion of
+Structured I/O builds on foundations set forth in the _structure_ portion of
 the dataset definition. For any valid dataset it must be possible to create
 a Structured Reader of the dataset body, and a Writer that can be used to 
 compose an update.
@@ -123,8 +123,8 @@ reader from scratch & reading it's values:
 ### Stream & Top Level Data
 A _stream_ refers to refer to both a _reader_ and a _writer_ collectively.
 
-_Top Level_ refers to the first entry in a discrete set of data.
-This data's top level is an _array_:
+_Top Level_ refers to the specific type of the outermost element in a structured 
+piece of data. This data's top level is an _array_:
 ```json
 [
   {"a": 1},
@@ -138,13 +138,16 @@ This Data's top level is a _string_:
 "foo"
 ```
 
+Qri requires a top-level type of either array or object.
+
 ### Entries
 Traditional "unstructured" streams often use byte arrays as the basic unit that
 is both read and written. Structured I/O works with _entries_ instead
 An _entry_ is the fundamental unit of reading & writing for a Structured stream.
-Entries are themselves a small abstraction that carries the `Value` (parsed 
-data), `Index` and `Key`. Only one of `Index` and `Key` will be populated at a
-given point, depending on weather an array or object is being read.
+Entries are themselves a small abstraction that carries the `Value`, which is 
+parsed data of an arbitrary structure, `Index` and `Key`. Only one of `Index` 
+and `Key` will be populated for a given entry, depending on weather a top level 
+array or object is being read.
 
 ### Value Types
 Qri is built around a basic set of types, which forms a crucial assumption when
