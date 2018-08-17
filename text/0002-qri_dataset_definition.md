@@ -1,7 +1,12 @@
 - Feature Name: qri_dataset_definition
 - Start Date: 2018-08-14
 - RFC PR: [#2](https://github.com/qri-io/rfcs/pull/2)
-- Issue: N/A
+- Repo: https://github.com/qri-io/dataset
+
+_Note: This RFC was created as part of an initial sprint to adopt the RFC
+process itself to help clarify our existing work. As such, sections of this 
+document are less complete than we'd expect from a new RFC.
+-:heart: the qri core team_
 
 # Summary
 [summary]: #summary
@@ -19,10 +24,10 @@ definitions or specifications.
 # Motivation
 [motivation]: #motivation
 
-I want a dataset document definition built with interoperability first, and
-has all of the properties present in it:
+I want a datasets that have the following features:
 
 - Interoperable
+- Convertable
 - Versioned
 - Attributed
 - Archival
