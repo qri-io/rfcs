@@ -8,7 +8,7 @@
 
 Transformations are repeatable scripts for generating a dataset.  These scripts are written in Skylark, a scripting language from Google that feels a lot like python, but is, importantly, Turing-_incomplete_. 
 
-Skylark transformations include tools for creating documents from things like a stream of input data, HTTP resources, or other qri datasets.  Transformation scripts are embedded into the dataset document, allowing datasets to "self update" by re-executing the script and adding a snapshot to a dataset's version history.
+Skylark transformations provide tools for creating documents from things like a stream of input data, HTTP resources, or other qri datasets.  Transformation scripts are embedded into the dataset document, allowing datasets to "self update" by re-executing the script and adding a snapshot to a dataset's version history.
 
 Typical examples of a skylark transformation include:
 
@@ -179,23 +179,23 @@ So far there are two predefined data functions, with more planned for future use
 
 ### Function Definitions
 
-#### get_body {#get_body} 
+#### get_body
 
   `qri.get_body()` - returns the body from the data from the body file
 
-#### get_config {#get_config}
+#### get_config 
   `qri.get_config()` - returns the config as a json object
 
-#### get_secret {#get_secret}
+#### get_secret 
   `qri.get_secret()` - returns the secret from the config
   
-#### set_meta {#set_meta}
+#### set_meta 
   `qri.set_meta(field, value)` - Sets the meta at specific field to the value
 
-#### set_schema {#set_schema}
+#### set_schema 
   `qri.set_schema(value)` - Sets the schema to the object found at value
 
-#### attr {#attr}
+#### attr 
   `selection.attr(attribute)` - Returns a string of the given attribute for that selection in the document. For example:
 
   ```python
@@ -204,7 +204,7 @@ So far there are two predefined data functions, with more planned for future use
   doc.attr("class") # is equal to 'example_class_name'
   ```
 
-#### children {#children}
+#### children 
   `selection.children()` - Children gets the child elements of each element in the Selection. It returns a new Selection object containing these elements
 
   ```python
@@ -214,7 +214,7 @@ So far there are two predefined data functions, with more planned for future use
   # returns a selection with the <p class="A"> node and <p class="B"> node
   ```
 
-#### children_filtered {#children_filtered}
+#### children_filtered 
   `selection.children_filtered(filter)` - ChildrenFiltered gets the child elements of each element in the Selection, filtered by the specified selector. It returns a new Selection object containing these elements
 
   ```python
@@ -224,84 +224,84 @@ So far there are two predefined data functions, with more planned for future use
   # returns a selection with the <p class="B"> node
   ```
 
-#### contents {#contents}
+#### contents 
   `selection.contents()` - Contents gets the children of each element in the Selection, including text and comment nodes. It returns a new Selection object containing these elements
 
 
-#### eq {#eq}
+#### eq 
   `selection.eq(index)` - Eq returns node i as a new selection
 
 
-#### find {#find}
+#### find 
   `selection.find(selector)` - Find gets the descendants of each element in the current set of matched elements, filtered by a given selector string. It returns a new Selection containing these matched elements.
 
-#### first {#first}
+#### first 
   `selection.first()` - First returns the first element of the selection as a new selection
 
-#### filter {#filter}
+#### filter 
   `selection.filter(selector)` - Filter reduces the set of matched elements to those that match the selector string. It returns a new Selection object for this subset of matching elements
 
-#### get {#get}
+#### get 
   `selection.get(index)` - Get retrieves the underlying node at the specified index. Get without parameter is not implemented, since the node array is available on the Selection object
 
-#### has {#has}
+#### has 
   `selection.has()` - Has reduces the set of matched elements to those that have a descendant that matches the selector. It returns a new Selection object with the matching elements
 
-#### last {#last}
+#### last 
   `selection.last()` - Last returns the last element of the selection as a new selection
 
-#### len {#len}
+#### len 
   `selection.len()` - Len returns the length of the nodes in the selection as an integer
 
-#### parent {#parent} 
+#### parent  
   `selection.parent()` - Parent gets the parent of each element in the Selection. It returns a new Selection object containing the matched elements
 
-#### parents_until {#parents_until}
+#### parents_until 
   `selection.parents_until(selector)` - ParentsUntil gets the ancestors of each element in the Selection, up to but not including the element matched by the selector. It returns a new Selection object containing the matched elements
 
-#### siblings {#siblings}
+#### siblings 
   `selection,siblings()` - Siblings gets the siblings of each element in the Selection. It returns a new Selection object containing the matched elements
 
-#### text {#html_text}
+#### text 
   `text()` - Text gets the combined text contents of each element in the set of matched elements, including their descendants
 
-#### http.delete {#delete}
+#### http.delete 
   `http.delete(url)` - Sends a DELETE request to the given url. Returns a response.
 
-#### http.get {#http.get}
+#### http.get 
   `http.get(url)` - Sends a GET request to the given url. Returns a response.
 
-#### http.options {#options}
+#### http.options 
   `http.options(url)` - Sends an OPTIONS request to the given url. Returns a response.
 
-#### http.patch {#patch}
+#### http.patch 
   `http.patch(url)` - Sends a PATCH request to the given url. Returns a response.
 
-#### http.post {#post}
+#### http.post 
   `http.post(url)` - Sends a POST request to the given url. Returns a response.
   
-#### http.put {#put}
+#### http.put 
   `http.put(url)` - Sends a PUT request to the given url. Returns a response.
 
-#### content {#content}
+#### content 
   `response.content()` - Content returns the raw data as a string. This string can be passed to `qri.html(content_string)` to return a document that can be parsed by the `html` functions.
 
-#### encoding {#encoding}
+#### encoding 
   `response.encoding()` - Encoding returns a string with the different forms of encoding used in the response.
   
-#### headers {#headers}
+#### headers 
   `response.headers()` - Headers returns a dictionary of the response headers.
   
-#### json {#json}
+#### json 
   `response.json()` - Json attempts the response body as json.
   
-#### status_code {#status_code}
+#### status_code 
   `response.status_code` - Status_code returns the status code of the response.
   
-#### text {#text}
+#### text 
   `response.text()` - Text returns the raw data as a string. This string can be passed to `qri.html(text)` to return a document that can be parsed by the `html` functions.
   
-#### url {#url}
+#### url 
   `response.url` -  returns a string representation of the url
 
 # Drawbacks
