@@ -139,8 +139,17 @@ A dataset is a _document of structured information_.
 Datasets take inspiration from HTML documents, deliniating semantic purpose
 to predefined tags of the document, but instead of orienting around
 presentational markup, dataset documents emphasize interoperability and
-composition. The principle encoding format for a dataset document is JSON.
+composition. 
 
+Datasets are modeled around the metaphor of a _file_ to help settle the question
+of dataset granularity & relations between datasets. By equating a dataset to a
+document (file), it naturally follows that a dataset is one "thing". and 
+relating it to "other things" is process of linking across files.
+By orienting around documents instead of "packages", we simplify the mental 
+model presented to the end user. Collating dataset documents into a collection
+or package is the subject of future research.
+
+The principle encoding format for a dataset document is JSON.
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
@@ -240,8 +249,8 @@ _additional data types:_
 _example:_
 ```json
   { 
-    "name" : "sean carter",
-    "url" : "https://jayz.com",
+    "name" : "Jay-Z: Decoded",
+    "url" : "https://en.wikipedia.org/wiki/Decoded_(memoir)",
     "email" : "hova@jayz.com"
   }
 ```
