@@ -550,7 +550,7 @@ show log of dataset history
 
 log prints a list of changes to a dataset over time. Each entry in the log is a 
 snapshot of a dataset taken at the moment it was saved that keeps exact details 
-about how that dataset looked at at that point in time. 
+about how that dataset looked at that point in time. 
 
 We call these snapshots versions. Each version has an author (the peer that 
 created the version) and a message explaining what changed. Log prints these 
@@ -943,7 +943,7 @@ be sooner.
 Keep in mind that by default your IPFS repo is capped at 10GB in size, if you
 adjust this cap using IPFS, Qri will respect it.
 
-Use the `--delete` flag to force immediate removal of a dataset from both qri & 
+Use the `--purge` flag to force immediate removal of a dataset from both qri & 
 IPFS to free up the space that was taken up by that dataset.
 
 ```
@@ -961,7 +961,7 @@ qri remove [flags] <dataset_reference>
 
 ```
   -h, --help     help for remove
-  -f, --delete   immediately free up space that was taken up by this dataset
+  -p, --purge    immediately free up space that was taken up by this dataset
 ```
 
 
@@ -1189,9 +1189,9 @@ Select datasets for use with other commands
 
 Select datasets for use with other commands. 
 
-Run the `use` command to 'save' a reference to a specific dataset. This dataset
-will be referenced for future commands, if no dataset reference is explicitly
-given for those commands.
+Run the `use` command to have Qri remember a reference to a specific dataset. 
+This dataset will be referenced for future commands, if no dataset reference 
+is explicitly given for those commands.
 
 We created this command to ease the typing/copy and pasting burden while using
 Qri to explore a dataset.
