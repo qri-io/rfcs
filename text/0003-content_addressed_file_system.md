@@ -1,7 +1,12 @@
 - Feature Name: content_addressed_file_system
 - Start Date: 2017-08-03
 - RFC PR: [#3](https://github.com/qri-io/rfcs/pull/3)
-- Issue: NA
+- Repo: https://github.com/qri-io/cafs
+
+_Note: This RFC was created as part of an initial sprint to adopt the RFC
+process itself, as such sections of this document are less complete than
+we'd hope, or less complete than we'd expect from a new RFC.
+-:heart: the qri core team_
 
 # Summary
 [summary]: #summary
@@ -47,11 +52,13 @@ of the file.
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-The File Interface:
+There are two primary interfaces that constitute a CAFS, *File* and *Filestore*:
+
+
+File is an interface that provides functionality for handling files/directories 
+as values that can be supplied to commands. For directories, child files are 
+accessed serially by calling `NextFile()`.
 ```golang
-  // File is an interface that provides functionality for handling
-  // files/directories as values that can be supplied to commands. For
-  // directories, child files are accessed serially by calling `NextFile()`.
   type File interface {
     // Files implement ReadCloser, but can only be read from or closed if
     // they are not directories
@@ -76,13 +83,12 @@ The File Interface:
   }
 ```
 
-The Filestore interface:
+Filestore is an interface for working with a content-addressed file system.
+This interface is under active development, expect it to change lots.
+It's currently form-fitting around IPFS (ipfs.io), with far-off plans to 
+generalize toward compatibility with git (git-scm.com), then maybe other stuff, 
+who knows.
 ```golang
-
-  // Filestore is an interface for working with a content-addressed file system.
-  // This interface is under active development, expect it to change lots.
-  // It's currently form-fitting around IPFS (ipfs.io), with far-off plans to generalize
-  // toward compatibility with git (git-scm.com), then maybe other stuff, who knows.
   type Filestore interface {
     // Put places a file or a directory in the store.
     // The most notable difference from a standard file store is the store itself determines
@@ -130,7 +136,8 @@ need to be handled carefully.
 [rationale-and-alternatives]: #rationale-and-alternatives
 
 We could skip the notion of _files_ entirely at this level, and instead choose 
-to focus on _graph_ structures.
+to focus on _graph_ structures. I think we may end up maturing in this direction
+over time, but if so let's do that with proper design consideration.
 
 # Prior art
 [prior-art]: #prior-art
