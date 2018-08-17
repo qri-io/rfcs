@@ -24,18 +24,111 @@ definitions or specifications.
 # Motivation
 [motivation]: #motivation
 
-I want a datasets that have the following features:
+Some time ago I had a chance to work with volunteers across the US & Canada to 
+archive US government datasets through a series of Data Rescue events. For me, 
+this experience was transformative. Librarians, developers, grassroots 
+activists, computer scientists, database administrators, data catalogue 
+designers, and others set egos aside and in the span of days built and iterated 
+on a system with goals no smaller than “let’s back up entire government
+agencies.”
 
-- Interoperable
-- Convertable
+At the beginning of Data Rescue New York, just after we had walked through how 
+the archiving work would be done, a very credible volunteer raised a concern. 
+To paraphrase what he said:
+
+> “This is a waste of time.” 
+
+Thankfully, he elaborated:
+
+> “This process is not rigorous enough. The simple act of opening a file can 
+affect the underlying data, and all these people are putting their greasy hands 
+on data, making it useless to policy makers. And don’t get me started on what we
+ do when all this data changes. We should all go get a beer instead.”
+
+He was right. While simply copying the data was the simplest solution to the 
+problem that had brought all of us together. 
+We had not planned for what would predictably come next:
+
+- Where will the data be stored? And how is that any better than how it’s 
+currently being stored? Is that sustainable? Who will pay to store it?
+- How will it be organized?
+- How will anyone know it’s accurate?
+- How do we incorporate necessary changes and updates to those existing 
+datasets?
+- What happens when new data are published?
+
+If this project were to add any sustainable value to the world, these backup 
+datasets would need to be better than the originals they’re made from, and users 
+would need a good reason to use them over the same datasets stored at the 
+canonical source. Essentially, we lacked a way for a loosely connected group to 
+create, hold, and maintain trustworthy copies of large-scale, trustworthy data. 
+I’m not sure we realized it at the time, but as a group we were collectively 
+articulating all the ingredients of a data commons. 
+
+I’ve spent the time since Data Rescue events listening to everyone who 
+will give me time and incorporating feedback. Sometimes a well-articulated 
+problem is worth more than the solution, and a clear understanding of the 
+problems we faced showed me that any solution would need to allow datasets to 
+be: 
+- Decentralized
 - Versioned
-- Attributed
-- Archival
-- Repeatable
-- Tolerant
+- Structured
+- Annotated
+- Interoperable
 
-To do that we need a foundational document definition that employs best
-practices observed from a number of disparate fields.
+### Decentralized
+The decentralized web can sometimes feel like a solution in search of a problem. 
+“The Internet isn’t broken”. In the eyes of a Data Rescuer, the internet is 
+broken. It represents a dependency that we can no longer assume will stick 
+around.
+
+Qri is not decentralized because it’s interesting, we are decentralized by 
+pragmatic necessity. Moving data from one central source to another central 
+source does not fix the problem. To fix the problem the data needs to be able 
+to live anywhere. Building a foundation on which lots of people can bring talent
+to table.
+
+### Versioned
+Qri’s dataset versioning system is inspired by git, and signs each commit with 
+your identifying keypair. Because qri is only about datasets, qri can do new 
+things like generate commit messages for you.
+
+### Content Addressing
+
+Qri assumes it's underlying store is a content-addressed file system. 
+All datasets on qri are immutable. Datasets are identified by their 
+cryptographic hash, and assume they are being stored on a content-addressed 
+file system (content is referred to by cryptographic hash). Changes to datasets 
+are stored by creating a new version of data that references the previous 
+version. All Versions of Qri includes a naming systemthat connects 
+human-readable names to the latest version (“tip”) of a dataset history of qri 
+datasets are tracked & attributed, signed with a keypair associated with 
+the Peer.
+
+### Structured
+Structure defines the characteristics of a dataset document necessary for a 
+machine to interpret the dataset’s body - or content. Structure fields are 
+things like the encoding data format (JSON,CSV,etc.), length of the dataset body 
+in bytes, stored in a rigid form intended for machine use. A well-defined 
+structure & accompanying software should allow the end user to spend more time 
+focusing on the data itself.
+
+### Annotated
+Librarians are better at metadata than developers, so we based our metadata spec
+on DCAT & Project Open Data, for cleaner integration with existing data catlogs
+
+Meta contains human-readable descriptive metadata that qualifies and 
+distinguishes a dataset. Well-defined Meta should aid in making datasets 
+Findable by describing a dataset in generalizable taxonomies that can aggregate 
+across other dataset documents. Because dataset documents are intended to 
+interoperate with many other data storage and cataloging systems, meta fields 
+and conventions are derived from existing metadata formats whenever possible.
+
+### Interoperable
+Two dataset documents that both have a defined structure will have some degree 
+of natural interoperability, depending first on the amount of detail provided in
+a dataset’s structure, and then by the natural comparibilty of the datasets.
+
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
