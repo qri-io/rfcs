@@ -15,8 +15,8 @@ A Dataset is a document of structured data. Dataset documents are designed to
 satisfy the [**FAIR** principle](https://www.nature.com/articles/sdata201618) 
 of being _Findable, Accessible, Interoperable, and Reusable_, in relation to 
 other dataset documents, and related-but-separate technologies such as data
-catalogs, HTTP API's, and data package formats Datasets are designed to be 
-stored and distributed on content-addressed (identify-by-hash) systems The 
+catalogs, HTTP API's, and data package formats. Datasets are designed to be 
+stored and distributed on content-addressed (identify-by-hash) systems. The 
 dataset document definition is built from a research-first principle, 
 valuing direct interoperability with existing standards over novel 
 definitions or specifications.
@@ -46,8 +46,8 @@ on data, making it useless to policy makers. And don’t get me started on what 
  do when all this data changes. We should all go get a beer instead.”
 
 He was right. While simply copying the data was the simplest solution to the 
-problem that had brought all of us together. 
-We had not planned for what would predictably come next:
+problem that had brought all of us together, we had not planned for what would 
+predictably come next:
 
 - Where will the data be stored? And how is that any better than how it’s 
 currently being stored? Is that sustainable? Who will pay to store it?
@@ -65,11 +65,10 @@ create, hold, and maintain trustworthy copies of large-scale, trustworthy data.
 I’m not sure we realized it at the time, but as a group we were collectively 
 articulating all the ingredients of a data commons. 
 
-I’ve spent the time since Data Rescue events listening to everyone who 
-will give me time and incorporating feedback. Sometimes a well-articulated 
-problem is worth more than the solution, and a clear understanding of the 
-problems we faced showed me that any solution would need to allow datasets to 
-be: 
+Since the Data Rescue events, I’ve listened to everyone who will give me time 
+and incorporated their feedback. Sometimes a well-articulated problem is worth 
+more than the solution, and a clear understanding of the problems we faced showed
+me that any solution would need to allow datasets to be: 
 - Decentralized
 - Versioned
 - Structured
@@ -85,12 +84,12 @@ around.
 Qri is not decentralized because it’s interesting, we are decentralized by 
 pragmatic necessity. Moving data from one central source to another central 
 source does not fix the problem. To fix the problem the data needs to be able 
-to live anywhere. Building a foundation on which lots of people can bring talent
+to live anywhere, building a foundation on which lots of people can bring talent
 to table.
 
 ### Versioned
-Qri’s dataset versioning system is inspired by git, and signs each commit with 
-your identifying keypair. Because qri is only about datasets, qri can do new 
+Qri’s dataset versioning system is inspired by git. It signs each commit with 
+an identifying keypair. Because qri is only about datasets, qri can do new 
 things like generate commit messages for you.
 
 ### Content Addressing
@@ -99,11 +98,12 @@ Qri assumes its underlying store is a [content-addressed file system](/text/0003
 All datasets on qri are immutable. Datasets are identified by their 
 cryptographic hash, and assume they are being stored on a content-addressed 
 file system (content is referred to by cryptographic hash). Changes to datasets 
-are stored by creating a new version of data that references the previous 
-version. All versions of Qri includes a naming system that connects 
-human-readable names to the latest version (“tip”) of a dataset history of qri 
-datasets are tracked & attributed, signed with a keypair associated with 
-the Peer.
+are stored by creating a new version of a dataset that references the previous 
+version. Qri includes a naming system that connects human-readable names to the 
+latest version of a dataset. This latest version is the "tip" of a dataset 
+history, a linking of all the versions of this particular dataset. All datasets 
+are tracked & attributed, signed with a keypair associated with the Peer who 
+created or updated the dataset.
 
 ### Structured
 Structure defines the characteristics of a dataset document necessary for a 
@@ -115,14 +115,15 @@ focusing on the data itself.
 
 ### Annotated
 Librarians are better at metadata than developers, so we based our metadata spec
-on DCAT & Project Open Data, for cleaner integration with existing data catlogs
+on DCAT & Project Open Data, for cleaner integration with existing data catalogs.
 
 Meta contains human-readable descriptive metadata that qualifies and 
 distinguishes a dataset. Well-defined Meta should aid in making datasets 
-Findable by describing a dataset in generalizable taxonomies that can aggregate 
-across other dataset documents. Because dataset documents are intended to 
-interoperate with many other data storage and cataloging systems, meta fields 
-and conventions are derived from existing metadata formats whenever possible.
+findable. By describing a dataset in generalizable taxonomies that can aggregate 
+across other dataset documents, you can build associations between datasets. 
+Because dataset documents are intended to interoperate with many other data 
+storage and cataloging systems, meta fields and conventions are derived from 
+existing metadata formats whenever possible.
 
 ### Interoperable
 Two dataset documents that both have a defined structure will have some degree 
@@ -148,7 +149,7 @@ composition. The principle encoding format for a dataset document is JSON.
 Dataset documents are designed to produce consistent checksums when encoded
 for storage & transmission. To keep hashing consistent map keys are sorted
 lexographically for encoding. This applies to all fields of a dataset
-document except the body of a dataaset, where users may need to dictate the
+document except the body of a dataset, where users may need to dictate the
 ordering of map keys
 
 ## Dataset Components:
@@ -157,7 +158,7 @@ A Dataset is broken into several components. Each component has a different purp
 
 | component   | purpose  |
 |-------------|----------| 
-| `body`      | location of dataset data. The _subject_ all other componets are about | 
+| `body`      | location of dataset data. The _subject_ all other components are about | 
 | `commit`    | versioning information for this dataset at a specific point in time | 
 | `meta`      | descriptive metadata | 
 | `structure` | machine-oriented metadata for interpreting body | 
@@ -168,7 +169,7 @@ Each component is described in detail below.
 
 
 ### `body`
-Body is the principle content of a dataset. A dataset body is the subject which all other fields describe and qualify.
+Body is the principle content of a dataset. A dataset body is the subject about which all other fields describe and qualify.
 
 Supported Data Formats:
 
@@ -176,7 +177,7 @@ Supported Data Formats:
 * `json` - _javascript object notation_
 * `cbor` - _concise binary object representation_
 
-The structure of the data stored is arbitrary, with one important exception: _the top level of body must be either an object or an array_. scalar types like int, bool, float, or strings are not valid types. Keep in mind that it's perfectly valid to wrap a scalar type (for example, a string) in an array to obtain a valid body.
+The structure of the data stored is arbitrary, with one important exception: _the top level of body must be either an object or an array_. Scalar types like int, bool, float, or strings are not valid types. Keep in mind that it's perfectly valid to wrap a scalar type (for example, a string) in an array to obtain a valid body.
 
 ### `commit`
 Commit encapsulates information about changes to a dataset in relation to other entries in a given history. Commit is directly analogous to the concept of a Commit Message in the git version control system. A full commit defines the administrative metadata of a dataset, answering _"who made this dataset, when, and why"_.
@@ -190,7 +191,7 @@ _commit fields:_
 | `qri`        | `string` | this commit's qri kind, value should always be `cm:0` |
 | `signature`  | `string` | base58-encoded bytes of body checksum |
 | `timestamp`  | `string` | time this dataset was created with timezone offset |
-| `title`      | `string` | title of the commit. should be a short description of |
+| `title`      | `string` | title of the commit. should be a short description of changes |
 
 _additional data types:_
 
@@ -207,7 +208,7 @@ _example_
 
 ### `meta`
 Meta contains human-readable descriptive metadata that qualifies and distinguishes a dataset.
-Well-defined Meta should aid in making datasets Findable by describing a dataset in generalizable taxonomies that can aggregate across other dataset documents. Because dataset documents are intended to interoperate with many other data storage and cataloging systems, meta fields and conventions are derived from existing metadata formats whenever possible.
+Well-defined Meta should aid in making datasets findable by describing a dataset in generalizable taxonomies that can aggregate across other dataset documents. Because dataset documents are intended to interoperate with many other data storage and cataloging systems, meta fields and conventions are derived from existing metadata formats whenever possible.
 
 All of the meta fields below must be well-formed valid values. However: _The Meta section of a dataset supports arbitrary metadata_. This means you can place additional values not listed here & qri will store them as-is, without any additional validation.
 
@@ -218,14 +219,14 @@ _meta fields:_
 | name                  | type          | description   |
 |-----------------------|---------------|---------------|
 | `accessPath`          | `string`      | url or location to access this dataset.   |
-| `accrualPeriodicity`  | `string`      | frequency with which dataset changes. Must be an [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Repeating_intervals) repeating duration   |
+| `accrualPeriodicity`  | `string`      | frequency at which dataset changes. Must be an [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Repeating_intervals) repeating duration   |
 | `citations`           | `[]Citation`  | array of assets used to build this dataset   |
 | `contributors`        | `[]User`      | description   |
 | `description`         | `string`      | roughly a paragraph of human-readable text that provides context for the dataset |
 | `downloadPath`        | `string`      | URL or other path string to where to download this dataset   |
 | `homePath`            | `string`      | URL or other path string to a "landing page" resource that explains the dataset  |
 | `identifier`          | `string`      | identifer for the dataset   |
-| `keywords`            | `[]string`    | string of "tags" to connect this dataset with other datasets that carry similar keywords   |
+| `keywords`            | `[]string`    | list of "tags" to connect this dataset with other datasets that carry similar keywords   |
 | `language`            | `[]string`    | array of languages this dataset is written, in [ISO 639-1](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes) format, ordered by most-to-least dominant  |
 | `license`             | `License`     | the legal licensing agreement this dataset is released under  |
 | `title`               | `string`      | title of the dataset |
@@ -257,6 +258,7 @@ _example:_
 
 ### `structure`
 Structure defines the characteristics of a dataset document necessary for a machine to interpret the dataset body.
+
 Structure fields are things like the encoding data format (JSON,CSV,etc.), length of the dataset body in bytes, stored in a rigid form intended for machine use. A well defined structure & accompanying software should allow the end user to spend more time focusing on the data itself.
 
 Two dataset documents that both have a defined structure will have some degree of natural interoperability, depending first on the amount of detail provided in a dataset's structure, and then by the natural comparibilty of the datasets.
@@ -271,7 +273,7 @@ _structure fields:_
 | `errCount`          | `int`         | the number of errors returned by validating data against schema. |
 | `entries`           | `int`         | number of top-level entries in the dataset. analogous to the number of rows in a table |
 | `format`            | `string`      | specifies the format of the raw data type by file extension. Must be one of: `json`|`csv`|`cbor` |
-| `formatConfig`      | `object`      |  removes as much ambiguity as possible about how to interpret the speficied format. Properties of this object depend on the `format` field |
+| `formatConfig`      | `object`      |  removes as much ambiguity as possible about how to interpret the specified format. Properties of this object depend on the `format` field |
 | `length`            | `int`         | length of the data object in bytes |
 | `schema`            | `jsonSchema`  | the schema definition for the dataset body, schemas are defined using the IETF json-schema specification. for more info on json-schema see: https://json-schema.org |
 
@@ -285,9 +287,9 @@ _transform fields:_
 | name                 | type     | description |
 |----------------------|----------|-------------|
 | `scriptPath`         | `string` | the path to the script that produced this transformation |
-| `syntax`             | `string` | langauge this transform is written in. Only "skylark" is currently supported |
+| `syntax`             | `string` | language this transform is written in. Only "skylark" is currently supported |
 | `syntaxVersion`      | `string` | an identifier for the application and version number that produced the result |
-| `config`             | `object` | any configuration that would affect the resulting hash. transformations may use values present in config to perform their operations |
+| `config`             | `object` | any configuration that would affect the resulting hash. Transformations may use values present in config to perform their operations |
 | `resources`          | `object` |  map of all datasets transform depends on with both name and commit paths |
 
 ### `viz`
