@@ -1,7 +1,12 @@
 - Feature Name: dataset_naming
 - Start Date: 2017-08-14
 - RFC PR: [#6](https://github.com/qri-io/rfcs/pull/3)
-- Issue: https://github.com/qri-io/qri
+- Repo: https://github.com/qri-io/qri
+
+_Note: This RFC was created as part of an initial sprint to adopt the RFC
+process itself to help clarify our existing work. As such, sections of this
+document are less complete than we'd expect from a new RFC.
+-:heart: the qri core team_
 
 # Summary
 [summary]: #summary
