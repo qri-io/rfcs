@@ -1,7 +1,6 @@
 - Feature Name: structured_io
 - Start Date: 2017-10-18
 - RFC PR: [#4](https://github.com/qri-io/rfcs/pull/4)
-- Issue: N/A
 - Repo: [dataset](https://github.com/qri-io/dataset)
 
 _Note: This RFC was created as part of an initial sprint to adopt the RFC
@@ -12,33 +11,49 @@ we'd hope, or less complete than we'd expect from a new RFC.
 # Summary
 [summary]: #summary
 
-Structured I/O defines interfaces for reading & writing streams of _entries_,
-which are elements of a composite data structure such as an array or object.
-Structured reader & writer interfaces combine a byte stream, data format 
-and schema to create entry readers & writers that produce & consume entries
-instead of bytes. Structured I/O streams can be composed & connected to form
-the basis of rich data communication capable of spanning across formats.
+Structured I/O defines interfaces for reading & writing streams of parsed 
+ _entries_, which are elements of dynamic-yet-structred data such as JSON, CBOR,
+or CSV documents. Structured reader & writer interfaces combine a byte stream, 
+data format and schema to create entry readers & writers that produce & consume 
+entries of parsed primtive types instead of bytes. Structured I/O streams can be 
+composed & connected to form the basis of rich data communication capable of 
+spanning across formats.
 
 # Motivation
 [motivation]: #motivation
- 
-Structured I/O is the primary means of _parsing data_, abstracting away the
-underlying data format while also delivering a set of expectations about 
-that parsed data. 
 
-All of the following require tools data parsing:
+One of the prime goals of qri is to to be able to make any dataset comparable to
+another dataset. Datasets are also intended to be a generic-yet-structured
+document format, able to support all sorts of data with varying degrees of
+quality. These requirements mean datasets must be able to define their own 
+schemas, and may include data that violates that schema.
+
+Our challenge is to declare a clear set of abstractions that leverage _key
+assumptions_ enforced by the dataset model, and leverage those assumptions
+to combine arbitrary data at runtime.
+ 
+Structured I/O is the primary means of parsing data, abstracting away the
+underlying data format while also delivering a set of expectations about 
+parsed data based on those key assumptions. Those expectations are parsing
+to a predetermined set of types (`int`, `bool`, `string`, etc.), and delivering
+a _schema_ that includes a definition of valid data structuring.
+
+As concrete examples, all of the following require tools for data parsing:
 - Creating a dataset from a JSON file
-- Converting dataset data
+- Converting dataset data from one data format to another
 - Printing the first 10 rows of a dataset
 - Counting the number of entries in a dataset
 
-All of these tasks are basic things that we'd like to be able to do with a
-dataset. Structured I/O is intended to be a robust set of primitives that
+All of these tasks are basic things that we'd like to be able to do with one
+or more datasets.
+
+Structured I/O is intended to be a robust set of primitives that
 underpin these tasks. Structured _streams_ (readers & writers) wrap a 
 raw stream of bytes with a parser that tranform raw bytes into _entries_ made
 of a standard set language-native types (`int`, `bool`, `string`, etc.)
 Working with entries instead of bytes allows the programmer to avoid thinking
-about the underlying format & focus on the semantics of data.
+about the underlying format & focus on the semantics of data instead of
+idiosyncrocies between encoding formats.
 
 Orienting our primitives around _streams_ helps manage concerns created by both 
 network latency and data volume. By orienting qri around stream programming 
@@ -50,7 +65,8 @@ a Structured Reader of the dataset body, and a Writer that can be used to
 compose an update.
 
 Structured I/O is intended to underpin lots of other functionality. Doing new
-things with data should be a process of composing and enhancing Structured I/O streams. Want only a subsection of a dataset's body? use a `LimitOffsetReader`. 
+things with data should be a process of composing and enhancing Structured I/O 
+streams. Want only a subsection of a dataset's body? use a `LimitOffsetReader`. 
 Want to convert JSON to CBOR? Pipe a JSON-formatted `EntryReader` to a 
 CBOR-formatted writer.
 
@@ -150,14 +166,15 @@ string
 map[string]interface{} // object
 ```
 
-When examining an `Entry.Value` it's type is `interface{}`, performing a [type switch](https://tour.golang.org/methods/16) that handles all of the above types
-will cover all possible cases for a valid entry. Using such a type switch
+When examining an `Entry.Value` it's type is `interface{}`, performing a 
+[type switch](https://tour.golang.org/methods/16) that handles all of the above 
+types will cover all possible cases for a valid entry. Using such a type switch 
 recursively on complex types provides a robust, exhaustive method for inspecting
 any given entry.
 
 Its important to note that these garuntees are only enforced for basic 
 Structured I/O streams. Abstractions on top of Structured I/O may introduce
-additional types during processing. A classic example is date parsing.
+additional types during processing. A classic example is timestamp parsing.
 Implementers of streams that break this type assumption are encouraged to define
 a more specific interface than structured I/O to indicate to consumers this
 assumption has been broken.
@@ -294,6 +311,7 @@ should be in future a RFC.
 [prior-art]: #prior-art
 
 [golang's io package](https://godoc.org/io) is _the_ source of inspiration here.
+
 
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
