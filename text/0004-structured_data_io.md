@@ -4,6 +4,11 @@
 - Issue: N/A
 - Repo: [dataset](https://github.com/qri-io/dataset)
 
+_Note: This RFC was created as part of an initial sprint to adopt the RFC
+process itself, as such sections of this document are less complete than
+we'd hope, or less complete than we'd expect from a new RFC.
+-:heart: the qri core team_
+
 # Summary
 [summary]: #summary
 
@@ -16,33 +21,38 @@ the basis of rich data communication capable of spanning across formats.
 
 # Motivation
 [motivation]: #motivation
+ 
+Structured I/O is the primary means of _parsing data_, abstracting away the
+underlying data format while also delivering a set of expectations about 
+that parsed data. 
 
-Structured I/O is the primary means of _doing things with data_. All of the
-following require tools for semantic interpretation of data:
+All of the following require tools data parsing:
 - Creating a dataset from a JSON file
 - Converting dataset data
 - Printing the first 10 rows of a dataset
 - Counting the number of entries in a dataset
 
 All of these tasks are basic things that we'd like to be able to do with a
-dataset. Structured I/O is intended to be a robust set of primitives for
-performing these tasks. Structured _streams_ (readers & writers) abstract away 
-the data formats, automatically parsing raw bytes into parsed _entries_ of data.
+dataset. Structured I/O is intended to be a robust set of primitives that
+underpin these tasks. Structured _streams_ (readers & writers) wrap a 
+raw stream of bytes with a parser that tranform raw bytes into _entries_ made
+of a standard set language-native types (`int`, `bool`, `string`, etc.)
 Working with entries instead of bytes allows the programmer to avoid thinking
-about the underlying format & focus on the semantics.
+about the underlying format & focus on the semantics of data.
 
 Orienting our primitives around _streams_ helps manage concerns created by both 
-network latency and data volume. Stream-based programming reduces the
+network latency and data volume. By orienting qri around stream programming 
+we set ourselves up for success for programming in a distributed context.
 
 Structured I/O builds on foundations set fourth in the _structure_ portion of
 the dataset definition. For any valid dataset it must be possible to create
 a Structured Reader of the dataset body, and a Writer that can be used to 
 compose an update.
 
-"Doing things with data" should be a process of composing Structured streams.
-Want only a subsection of a dataset's body? use a `LimitOffsetReader`. Want
-to convert JSON to CBOR? Pipe a JSON-formatted `EntryReader` to a CBOR-formatted 
-writer.
+Structured I/O is intended to underpin lots of other functionality. Doing new
+things with data should be a process of composing and enhancing Structured I/O streams. Want only a subsection of a dataset's body? use a `LimitOffsetReader`. 
+Want to convert JSON to CBOR? Pipe a JSON-formatted `EntryReader` to a 
+CBOR-formatted writer.
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
@@ -64,11 +74,16 @@ reader from scratch & reading it's values:
     "github.com/qri-io/jsonschema"
   )
 
+  // the data we want to stream, an array with two entries 
+  const JSONData = `["foo",{"name":"bar"}]`
+
   st := &dataset.Structure{
     Format: dataset.JSONDataFormat,
     Schema: jsonschema.Must(`{"type":"array"}`),
   }
-  str, err := dsio.NewEntryReader(st, strings.NewReader(`["foo","bar"]`))
+
+  // created a Structured I/O reader:
+  str, err := dsio.NewEntryReader(st, strings.NewReader(JSONData))
   if err != nil {
     panic(err)
   }
@@ -83,14 +98,29 @@ reader from scratch & reading it's values:
   if err != nil {
     panic(err)
   }
-  fmt.Println(ent.Value) // "bar"
+  fmt.Println(ent.Value) // {"name":"bar"}
 
   _, err := str.ReadEntry()
   fmt.Println(err.Error()) // EOF
 ```
 
-### Stream
+### Stream & Top Level Data
 A _stream_ refers to refer to both a _reader_ and a _writer_ collectively.
+
+_Top Level_ refers to the first entry in a discrete set of data.
+This data's top level is an _array_:
+```json
+[
+  {"a": 1},
+  {"b": 2},
+  {"c": 3}
+]
+```
+
+This Data's top level is a _string_:
+```json
+"foo"
+```
 
 ### Entries
 Traditional "unstructured" streams often use byte arrays as the basic unit that
@@ -99,6 +129,51 @@ An _entry_ is the fundamental unit of reading & writing for a Structured stream.
 Entries are themselves a small abstraction that carries the `Value` (parsed 
 data), `Index` and `Key`. Only one of `Index` and `Key` will be populated at a
 given point, depending on weather an array or object is being read.
+
+### Value Types
+Qri is built around a basic set of types, which forms a crucial assumption when
+working with Structured I/O, which build on this assumption. These assumptions
+are inherited from JSON, with the addition of byte arrays.
+
+All entries will conform to one of the following types:
+```golang
+// Scalar Types
+nil
+bool
+int
+float64
+string
+[]byte
+
+// Complex Types
+[]interface{} // array
+map[string]interface{} // object
+```
+
+When examining an `Entry.Value` it's type is `interface{}`, performing a [type switch](https://tour.golang.org/methods/16) that handles all of the above types
+will cover all possible cases for a valid entry. Using such a type switch
+recursively on complex types provides a robust, exhaustive method for inspecting
+any given entry.
+
+Its important to note that these garuntees are only enforced for basic 
+Structured I/O streams. Abstractions on top of Structured I/O may introduce
+additional types during processing. A classic example is date parsing.
+Implementers of streams that break this type assumption are encouraged to define
+a more specific interface than structured I/O to indicate to consumers this
+assumption has been broken.
+
+### Corrupt Vs. Invalid Data
+Structured I/O must distinguish between data that is _corrupt_ and data that is
+_invalid_. Corrupt data is data that doesn't conform to the specified format.
+As an example, this is corrupt json data (extra comma):
+```json
+["foooo",]
+```
+Structured I/O will error if it enounters any kind of corrupt data.
+
+_Invalid_ data is data the doesn't conform to the specified _schema_ of
+structured I/O. Structured I/O streams _are_ expected to gracefully handle
+invalid data by falling back to _identity schemas_, discussed below.
 
 ### Identity Schemas & Fallbacks
 Because schemas _must_ be defined on complex types, and the only complex types 
@@ -116,18 +191,33 @@ a data stream be either an array or an object:
 { "type" : "object" }
 ```
 
-Data that does not conform to one of these two schemas is considered corrupt.
+Data who's top level does not conform to one of these two schemas is 
+considered corrupt.
 
-These "Identity Schemas" form a _fallback_ the stream can revert to if the data
+These "Identity Schemas" form a _fallback_ the stream will revert to if the data
 it's presented with is invalid. For example, if a schema specifies a top level
 of "object", and the stream encounters an array, it will silently revert to the
 array identity schema & keep reading.
 
+The rationale for such a choice is emphasizing _parsing_ over strict adherence
+to schema definitions. One of the primary use cases of a dataset version control
+system is to begin with data that is invalid according to a given schema, and
+correct toward it.
+
+For this reason, consumers of structured I/O streams are encouraged to 
+prioritize parsing based on type switches as mentined above, unless the codepath
+they are operating in presumes _strict mode_.
+
 ### Strict Mode
 Fallbacks are intended to keep data reading at all costs. However many use cases
 will want explicit failure when a stream is misconfigured. For this purpose
-streams should provide a "strict mode" that errors when invalid data is
-encountered instead of using silent fallbacks.
+streams provide a "strict mode" that errors when invalid data is encountered,
+instead of using silent identity-schema fallbacks.
+
+When a stream operating in Strict mode encouters an entry that doesn't match, it
+will return `ErrInvalidEntry` for that entry. In this case the stream will
+remain safe for continued use, so that invalid entries do not prevent access
+to subsequent valid reads/writes.
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
