@@ -1189,8 +1189,8 @@ Select datasets for use with other commands
 
 Select datasets for use with other commands. 
 
-Run the `use` command to have Qri remember a reference to a specific dataset. 
-This dataset will be referenced for future commands, if no dataset reference 
+Run the `use` command to have Qri remember references to a specific datasets. 
+These datasets will be referenced for future commands, if no dataset reference 
 is explicitly given for those commands.
 
 We created this command to ease the typing/copy and pasting burden while using
@@ -1207,8 +1207,9 @@ log
 render
 validate
 
+To add references to the remembered list of references, use the `--add` flag.
 ```
-qri use [flags]
+qri use [flags] <refs>
 ```
 
 ### Examples
@@ -1223,14 +1224,18 @@ qri use [flags]
 
   # show current selected dataset references:
   qri use --list
+
+  # add multiple references to the remembered list
+  qri use me/population_2017 me/population_2018
 ```
 
 ### Options
 
 ```
+  -a, --add     add another reference to the reference list
   -c, --clear   clear the current selection
   -h, --help    help for use
-  -l, --list    list selected references
+  -l, --list    list the selected references
 ```
 
 
