@@ -337,12 +337,13 @@ a formal alternative.
 # Prior art
 [prior-art]: #prior-art
 
-- [DCAT]
-- [JSON-LD]
-- [OKFN Data Package]
-- [Dat Data Package]
-- [R Packages]
-- [Web Archives]
+- [Git](https://git-scm.com)
+- [DCAT](https://www.w3.org/TR/vocab-dcat/)
+- [JSON-LD](https://en.wikipedia.org/wiki/JSON-LD)
+- [OKFN Data Package](https://frictionlessdata.io/data-packages/)
+- [Dat Data Package](https://datproject.org/)
+- [R Packages](http://r-pkgs.had.co.nz/data.html)
+- [Web Archives WARC spec](https://iipc.github.io/warc-specifications/specifications/warc-format/warc-1.0/)
 
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
