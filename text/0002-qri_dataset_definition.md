@@ -95,12 +95,12 @@ things like generate commit messages for you.
 
 ### Content Addressing
 
-Qri assumes it's underlying store is a content-addressed file system. 
+Qri assumes its underlying store is a [content-addressed file system](/text/0003-content_addressed_file_system.md).
 All datasets on qri are immutable. Datasets are identified by their 
 cryptographic hash, and assume they are being stored on a content-addressed 
 file system (content is referred to by cryptographic hash). Changes to datasets 
 are stored by creating a new version of data that references the previous 
-version. All Versions of Qri includes a naming systemthat connects 
+version. All versions of Qri includes a naming system that connects 
 human-readable names to the latest version (“tip”) of a dataset history of qri 
 datasets are tracked & attributed, signed with a keypair associated with 
 the Peer.
