@@ -1,7 +1,7 @@
 - Feature Name: CLI commands
 - Start Date: 2018-08-13
-- RFC PR: <!-- (leave this empty) -->
-- Issue: <!-- (leave this empty) -->
+- RFC PR: [#14](https://github.com/qri-io/rfcs/pull/14)
+- Repo: https://github.com/qri-io/qri
 
 # Summary
 [summary]: #summary
@@ -600,8 +600,8 @@ Once you’ve added data, you can use the export command to pull the data out of
 Qri, change the data outside of Qri, and use the save command to record those
 changes to Qri.
 
-Datasets added to Qri using `new` are published to the registry by default.
-Use the `--no-publish` flag to not publish this dataset to the registry. For
+Datasets added to Qri using `new` are not published to the registry by default.
+Use the `--publish` flag to publish this dataset to the registry. For
 more information on the registry and why it's important check out the [registry
 section](#qri_registry).
 
@@ -627,7 +627,7 @@ create a dataset with a dataset data file:
   -h, --help              help for new
   -m, --message string    commit message
       --private           make dataset private. WARNING: not yet implimented. Please refer to https://github.com/qri-io/qri/issues/291 for updates
-  -p, --no-publish        do not publish this dataset to the registry
+  -p, --publish           publish this dataset to the registry
       --secrets strings   transform secrets as comma separated key,value,key,value,... sequence
   -t, --title string      commit title
 ```
@@ -835,14 +835,12 @@ commands to control how your datasets are published to registries, opting out
 on a dataset-by-dataset basis.
 
 By default qri is configured to publish to https://registry.qri.io,
-the main public collection of datasets & peers. "qri new" and "qri update"
-default to publishing to a registry as part of dataset creation unless run 
-with the "no-publish" flag. Published datasets that are under 20MBs will be
-backed up by the Qri registry.
+the main public collection of datasets & peers. To publish a dataset as it is
+being created or changed, use `qri new --publish` or `qri save --publish`
 
 Unpublished dataset info will be held locally so you can still interact
 with it. And your datasets will be available to others peers when you run 
-"qri connect", but will not show up in search results, and will not be 
+`qri connect`, but will not show up in search results, and will not be 
 displayed on lists of registry datasets.
 
 Qri is designed to work without a registry should you want to opt out of
@@ -945,7 +943,7 @@ be sooner.
 Keep in mind that by default your IPFS repo is capped at 10GB in size, if you
 adjust this cap using IPFS, Qri will respect it.
 
-Use the `--free` flag to force immediate removal of a dataset from both qri & 
+Use the `--delete` flag to force immediate removal of a dataset from both qri & 
 IPFS to free up the space that was taken up by that dataset.
 
 ```
@@ -962,8 +960,8 @@ qri remove [flags] <dataset_reference>
 ### Options
 
 ```
-  -h, --help   help for remove
-  -f, --free   immediately free up space that was taken up by this dataset
+  -h, --help     help for remove
+  -f, --delete   immediately free up space that was taken up by this dataset
 ```
 
 
@@ -1067,7 +1065,10 @@ peer, the dataset gets renamed from `peers_name/dataset_name` to `my_name/datase
 The `--message` and `--title` flags allow you to add a commit message and title 
 to the save.
 
-Use `--no-publish` to not publish this version of the dataset to the Qri registry.
+Datasets added to Qri using `save` are not published to the registry by default.
+Use the `--publish` flag to publish this dataset to the registry. For
+more information on the registry and why it's important check out the [registry
+section](#qri_registry).
 
 ```
 qri save [flags] <dataset_reference>
@@ -1090,7 +1091,7 @@ qri save [flags] <dataset_reference>
   -f, --file string       dataset data file (yaml or json)
   -h, --help              help for save
   -m, --message string    commit message for save
-  -p, --no-publish        do not publish this dataset to the registry
+  -p, --publish           publish this dataset to the registry
       --secrets strings   transform secrets as comma separated key,value,key,value,... sequence
   -t, --title string      title of commit message for save
 ```
