@@ -11,35 +11,35 @@ we'd hope, or less complete than we'd expect from a new RFC.
 # Summary
 [summary]: #summary
 
-Content-Addressed File System (cafs) is a generalized interface for working with 
-filestores that determine names content based on the content itself, usually
+Content-Addressed File System (CAFS) is a generalized interface for working with 
+filestores that names content based on the content itself, usually
 through some sort of hashing function.
-Examples of a content-addressed file systems include git, bittorrent, IPFS, 
+Examples of content-addressed file systems include include git, bittorrent, IPFS, 
 the DAT project, etc.
 
 # Motivation
 [motivation]: #motivation
 
-The long-term goal of cafs is to define an interface for common filestore 
+The long-term goal of CAFS is to define an interface for common filestore 
 operations between different content-addressed filestores that serves the
 subset of features qri needs to function.
 
 This package doesn't aim to implement everything a given filestore can do, 
-but instead focus on basic file & directory i/o. cafs is very early days, 
+but instead focus on basic file & directory i/o. CAFS is in its very early days, 
 starting with a proof of concept based on IPFS and an in-memory implementation. 
-Over time we'll work to add additional stores, which will undoubtably affect 
+Over time we'll work to add additional stores, which will undoubtedly affect 
 the overall interface definition.
 
 A tacit goal of this interface is to manage the seam between graph-based
-storage systems, and and a file interface.
+storage systems, and a file interface.
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-There are two key interfaces to CAFS, the rest build upon these two:
+There are two key interfaces to CAFS. The rest are built upon these two:
 
 ### File
-File is an interface based largely on `os.File` interface from golang `os` 
+File is an interface based largely on the `os.File` interface from golang `os` 
 package, with the exception that files can be _either a file or a directory_.
 This file interface will have many dependants in the qri ecosystem.
 
@@ -114,7 +114,7 @@ who knows.
     // Adder gives a higher degree of control over the file adding process at the
     // cost of being harder to work with.
     // "pin" is a flag for recursively pinning this object
-    // "wrap" sets weather the top level should be wrapped in a directory
+    // "wrap" sets whether the top level should be wrapped in a directory
     // expect this to change to something like:
     // NewAdder(opt map[string]interface{}) (Adder, error)
     NewAdder(pin, wrap bool) (Adder, error)
