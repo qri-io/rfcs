@@ -6,22 +6,9 @@
 # Summary
 [summary]: #summary
 
-Skylark transformations implement a turing-_incomplete_ scripting language to
-automate the generating a dataset document. Skylark transformations include 
-tools for creating documents from things like a stream of input data, 
-HTTP resources, or other qri datasets. Transformation scripts are embedded into 
-the dataset document, allowing datasets to "self update" by re-executing the
-script & adding a snapshot to a dataset's version history.
+Tranformations are repeatable scripts for generating a dataset.  These scripts are writeen in Skylark, a scripting language from Google that feels a lot like python, but is, importantly, Turing-_incomplete_. 
 
-# Motivation
-[motivation]: #motivation
-
-Qri ("query") is about datasets. Transformations are repeatable scripts for 
-generating a dataset. Skylark is a scripting langauge from Google that feels a 
-lot like python.
-Skylark tranformations are about as close as one can get to the full power of a 
-programming language as a transformation syntax. Often you need this degree of 
-control to generate a dataset.
+Skylark transformations include tools for creating documents from things like a stream of input data, HTTP resources, or other qri datasets.  Transformation scripts are embedded into the dataset document, allowing datasets to "self update" by re-executing the script and adding a snapshot to a datasets's version history.
 
 Typical examples of a skylark transformation include:
 
@@ -29,38 +16,35 @@ Typical examples of a skylark transformation include:
 - downloading unstructured or structured data from the internet to extract
 - re-shaping raw input data before saving a dataset
 
-We're excited about skylark for a few reasons:
+# Motivation
+[motivation]: #motivation
 
-- python syntax - many people working in data science these days write python, 
-we like that, skylark likes that. dope.
-- deterministic subset of python - unlike python, skylark removes properties 
-that reduce introspection into code behaviour. things like while loops and 
-recursive functions are ommitted, making it possible for qri to infer how a 
-given transformation will behave.
-- parallel execution - thanks to this deterministic requirement (and lack of 
-global interpreter lock) skylark functions can be executed in parallel. Combined
-with peer-2-peer networking, we're hoping to advance tranformations toward
-peer-driven distribed computing. More on that in the coming months.
+Adding the power of a full programing language as a transformation syntax allows datasets  
+1. to be directly linked to existing raw or structured data sources and 
+2. to embed the cleaning and processing steps used to create them in the dataset definition
 
-One of the primary concerns with running arbitrary code is ensuring it's
-properly sandboxed against malicious intent. Chosing a turing-incomplete
-scripting syntax sets us on a path that allows code analysis
+This allows source data to be re-fetched and the processing to be re-executed in a new commit. 
+
+One of the primary concerns with running arbitrary code is ensuring it's properly sandboxed against malicious intent. Choosing a Turing-incomplete scripting syntax, like Skylark, sets us on a path that allows code analysis.  Some additional advantages of using Skylark include the following:
+
+- python syntax - many people working in data science these days write python, we like that, skylark likes that. dope.
+- deterministic subset of python - unlike python, skylark removes properties that reduce introspection into code behavior. things like while loops and recursive functions are omitted, making it possible for qri to infer how a given transformation will behave.
+- parallel execution - thanks to this deterministic requirement (and lack of global interpreter lock) skylark functions can be executed in parallel. Combinedwith peer-2-peer networking, we're hoping to advance transformations towardpeer-driven distributed computing. More on that in the coming months.
+
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
 
 ### Data Functions
-Data Functions are the core of a skylark transform script. Here's an example of 
-a simple data function that returns a constant result:
+Data Functions are the core of a skylark transform script. Here's an example of a simple data function that returns a constant result:
 
 ```python
 def transform(qri):
   return ["hello","world"]
 ```
 
-Here's something slightly more complicated that modifies a previous dataset by 
-adding up the length of all of the elements:
+Here's something slightly more complicated that modifies a previous dataset by adding up the length of all of the elements:
 
 ```python
 def transform(qri):
@@ -71,12 +55,8 @@ def transform(qri):
   return [{"total": count}]
 ```
 
-The `transform` function is analagous to a `main` function in other languages.
-It's the final function that is called by the host environment. Also like 
-languages that support zero or more `init` functions, there are other data
-functions. All data functions have a few things in common:
-- Data functions *always* return an array or dictionary/object, representing 
-the new dataset body
+The `transform` function is analogous to a `main` function in other languages.  It's the final function that is called by the host environment. Also like  languages that support zero or more `init` functions, there are other data functions. All data functions have a few things in common:
+- Data functions *always* return an array or dictionary/object, representing the new dataset body
 - When you define a data function, qri calls it for you
 - All transform functions are optional (you don't _need_ to define them), _but_
 - A transformation must have at least one data function
@@ -106,7 +86,7 @@ We should aim for a standard suite of skylark modules that
 
 The other major alternative here is web assembly (WSM.js), which is popular in
 the cryptocurrency space. We've made provisions for qri datasets to support
-both of these syntaxes, but given our committment to data science, a python-like
+both of these syntaxes, but given our commitment to data science, a python-like
 syntax is a clear winner here.
 
 # Prior art
