@@ -143,8 +143,8 @@ composition.
 
 Datasets are modeled around the metaphor of a _file_ to help settle the question
 of dataset granularity & relations between datasets. By equating a dataset to a
-document (file), it naturally follows that a dataset is one "thing". and 
-relating it to "other things" is process of linking across files.
+document (file), it naturally follows that a dataset is one "thing" and 
+relating it to "other things" is the process of linking across files.
 By orienting around documents instead of "packages", we simplify the mental 
 model presented to the end user. Collating dataset documents into a collection
 or package is the subject of future research.
