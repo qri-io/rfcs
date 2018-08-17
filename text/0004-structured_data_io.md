@@ -313,6 +313,21 @@ should be in future a RFC.
 [golang's io package](https://godoc.org/io) is _the_ source of inspiration here.
 
 
+### OpenAPI
+[OpenAPI](https://swagger.io/docs/specification/about/) Structured I/O can be 
+seen as a strict extension on OpenAPI. In fact, we use the jsonschema spec that
+grew out of OpenAPI!
+
+From OpenAPI's docs:
+> The ability of APIs to describe their own structure is the root of all 
+awesomeness in OpenAPI. Once written, an OpenAPI specification and Swagger tools 
+can drive your API development further in various ways...
+
+Qri datasets are analogous to self-contained OpenAPI specifications & data in 
+one combined document. Structured I/O is kinda like the thing that turns such a 
+document back into an "API".
+
+
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
