@@ -150,3 +150,5 @@ Bittorrent solves similar problems by encapsulating hash information in binary f
 
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
+
+What other shortcut names are there aside from `me` that we may also want to support in the future? How might the DatasetRef structure need to change in the future if new network values are ever supported?
