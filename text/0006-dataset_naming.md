@@ -16,13 +16,13 @@ Define the qri naming system, conventions for name resolution, and related jargo
 # Motivation
 [motivation]: #motivation
 
-As a decentralized system, qri must confront the Zooko's Triangle problem which is establishing a way of referring to datasets that is:
+As a decentralized system, qri must confront the [Zooko's Triangle](https://en.wikipedia.org/wiki/Zooko%27s_triangle) problem, which is establishing a way of referring to datasets that is:
 
 * human readable
 * decentralized
 * unique
 
-Because Qri is assumed to be built atop a content-address file system as its storage layer, the properties of being decentralized & unique are already present. The Qri naming system maps a human readable name to the newest version of a dataset.
+Because Qri is assumed to be built atop a content-addressed file system as its storage layer, the properties of being decentralized & unique are already present. The Qri naming system maps a human readable name to the newest version of a dataset.
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
