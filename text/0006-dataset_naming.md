@@ -36,13 +36,13 @@ an example of that looks like this:
 
     b5/comics@QmYCvbfNbCwFR45HiNP45rwJgvatpiW38D961L5qAhUM5Y/ipfs/QmejvEPop4D7YUadeGqYWmZxHhLc4JBUCzJJHWMzdcMe2y
 
-In a sentence: b5 is the handle of a user, who has a dataset named comics, and its hash on the ipfs network at a point in time was `QmejvEPop4D7YUadeGqYWmZxHhLc4JBUCzJJHWMzdcMe2y`
+In a sentence: b5 is the handle of a peer, who has a dataset named comics, and its hash on the ipfs network at a point in time was `QmejvEPop4D7YUadeGqYWmZxHhLc4JBUCzJJHWMzdcMe2y`
 
 The individual components of this reference are:
 
 * handle - The human-friendly name that the creator is using to refer to theirself, somewhat analagous to a username in other systems. We need handles so lots of people can name datasets the same thing.
 * dataset_name - The human-friendly name that makes it easy to remember and refer to the dataset.
-* profile_id - A unique identifier to let machines uniquely refer to datasets created by this user, regardless of whether their handle is renamed.
+* profile_id - A unique identifier to let machines uniquely refer to datasets created by this peer, regardless of whether their handle is renamed.
 * network - Protocol name that stores distributed data, defaulting to "ipfs".
 * version_id - A unique identifier hash to refer to a specific version of a dataset, from an exact point in time.
 
@@ -124,7 +124,7 @@ func CanonicalizeDatasetRef(r Repo, ref *DatasetRef) error {
 }
 ```
 
-This function handles replacements like converting `me` to the user's `handle`, and fills in PeerID and Path. It returns the error `repo.ErrNotFound` if the dataset does not exist in the user's repo, which means the dataset is not local, but may exist remotely. Callers of this function should respond appropriately, by contacting peers if a p2p connection exists.
+This function handles replacements like converting `me` to the peer's `handle`, and fills in PeerID and Path. It returns the error `repo.ErrNotFound` if the dataset does not exist in the user's repo, which means the dataset is not local, but may exist remotely. Callers of this function should respond appropriately, by contacting peers if a p2p connection exists.
 
 
 # Drawbacks
