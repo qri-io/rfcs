@@ -14,7 +14,7 @@ we'd hope, or less complete than we'd expect from a new RFC.
 Content-Addressed File System (CAFS) is a generalized interface for working with 
 filestores that names content based on the content itself, usually
 through some sort of hashing function.
-Examples of content-addressed file systems include include git, bittorrent, IPFS, 
+Examples of content-addressed file systems include git, bittorrent, IPFS, 
 the DAT project, etc.
 
 # Motivation
@@ -72,7 +72,7 @@ accessed serially by calling `NextFile()`.
 
     // IsDirectory returns true if the File is a directory (and therefore
     // supports calling `NextFile`) and false if the File is a normal file
-    // (and therefor supports calling `Read` and `Close`)
+    // (and therefore supports calling `Read` and `Close`)
     IsDirectory() bool
 
     // NextFile returns the next child file available (if the File is a
@@ -95,20 +95,21 @@ who knows.
     // the resulting key (google "content addressing" for more info ;)
     // keys returned by put must be prefixed with the PathPrefix,
     // eg. /ipfs/QmZ3KfGaSrb3cnTriJbddCzG7hwQi2j6km7Xe7hVpnsW5S
-    Put(file File, pin bool) (key datastore.Key, err error)
+    // "pin" is a flag for recursively pinning this object
+    Put(file File, pin bool) (key string, err error)
 
     // Get retrieves the object `value` named by `key`.
     // Get will return ErrNotFound if the key is not mapped to a value.
-    Get(key datastore.Key) (file File, err error)
+    Get(key string) (file File, err error)
 
     // Has returns whether the `key` is mapped to a `value`.
     // In some contexts, it may be much cheaper only to check for existence of
     // a value, rather than retrieving the value itself. (e.g. HTTP HEAD).
     // The default implementation is found in `GetBackedHas`.
-    Has(key datastore.Key) (exists bool, err error)
+    Has(key string) (exists bool, err error)
 
     // Delete removes the value for given `key`.
-    Delete(key datastore.Key) error
+    Delete(key string) error
 
     // NewAdder allocates an Adder instance for adding files to the filestore
     // Adder gives a higher degree of control over the file adding process at the
@@ -125,6 +126,12 @@ who knows.
     PathPrefix() string
   }
 ```
+
+### Pinning
+`Filestore.Put()` accepts a `pin` flag. when `pin = true` the filestore will retain
+a permanent reference to the file. When `pin = false`, the filestore may remove
+the file at any point. Adding files without pinning is a great way to get the hash
+of a file without enforcing the overhead of content retention.
 
 # Drawbacks
 [drawbacks]: #drawbacks
