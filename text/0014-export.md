@@ -6,120 +6,138 @@
 # Summary
 [summary]: #summary
 
-Peers need to be able to get q
+Users need to be able to get data not only into Qri, but out of it as well.
 
 # Motivation
 [motivation]: #motivation 
 
-<!-- Why are we doing this? What use cases does it support? What is the expected outcome? -->
-In order for Qri to be useful to a large swath of folks, we need a well 
-defined way to get datasets out of Qri. Our two methods for doing so are the
-`/export` api endpoint and the `qri export` command. Both methods should have
-the same options, level of control, and outputs.
+In order for Qri to be useful to a large swath of folks, we need to allow users to get datasets out of it, thus providing an easy way to interop with other tools.
+
+Our two methods for doing so are the `/export` api endpoint and the `qri export` command. Both methods should have the same options, level of control, and outputs.
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-<!-- Explain the proposal as if it was already included in the language and you were teaching it to a Qri _developer_. That generally means:
+Exporting from Qri needs to provide a wide array of flexible options, in order to maximize the quantity of other tools it can interoperate with. As with any system, as the number of options increases, the complexity of how options combine with each other grows exponentially, so it's especially important that we define how each option works individually.
 
-- Introducing new named concepts.
-- Explaining the feature largely in terms of examples.
-- Explaining how Qri developer should *think* about the feature, and how it should impact the way they use Qri. It should explain the impact as concretely as possible.
-- If applicable, provide sample error messages, deprecation warnings, or migration guidance.
-- If applicable, describe the differences between teaching this to a Qri developer vs a Qri _user_.
+In addition, we wish to provide high-level "intelligent" options that work like "presets", setting reasonable low-level options in order to cover common cases of what users will often want to accomplish.
 
-For implementation-oriented RFCs (e.g. for Qri codebase internals), this section should focus on how contributors should think about the change, and give examples of its concrete impact. For policy RFCs, this section should provide an example-driven introduction to the policy, and explain its impact in concrete terms. -->
-Export should allow users to export one, some, or all of:
-  - header (meta, structure, commit)
-  - body, or a section of it
-  - transform
-  - viz
-  - (rendered version of dataset in html?)
+The options that `export` should allow include:
 
-Export should allow users to export the dataset header as:
-  - json
-  - yaml
+* What part of a dataset gets exported
+	* header (meta, structure, commit)
+	* body (full, or part)
+	* transform
+	* viz
+* Format for the exported dataset header
+	* json
+	* yaml
+	* none (no header)
+* Format for the exported dataset body 	
+    * json
+    * yaml
+	* csv
+	* cbor
+	* a non-qri format like xlsx, pdf, html
+* Choices around encoding of data
+    * line-endings
+    * charset (usually utf-8)
+* Miscellaneous options
+    * file-format specific metadata (like putting the header into xlsx)
+    
+### Zip format
 
-Export should allow users to export the dataset body as:
-  - xlrs
-  - csv
-  - json
-  - cbor
-  - yaml
+If more than one file needs to be exported, Qri will create a single zip file containing a directory with standardized filenames. This is pretty similar to how many modern file formats work, such as `.ods`.
 
-Export should allow users to export the transform as:
-  - the format it was imported as
+### Embedded metadata
 
-Export should allow users to export the viz as
-  - html
+Some file formats include a location for including metadata. For example, html has the `<head>` element with `<meta>` tags, jpeg has EXIF chunks, and xlsx has custom properties. One of Qri's export options should be to write the metadata of a dataset into one of these file-specific locations, assuming the format is in use.
 
-(Export should allow users to export the render as:
-  - html)
+This would allow exporting a dataset to a single file, without losing any important metadata.
 
-Export should allow users to export one, some, or all of the dataset as a zip
+In such cases, it is also assumed that the metadata will include a cafs hash to the exported dataset, which will allow for easy parenting if the result gets reimported.
 
-Export should allow users to specify an export path. It should default to:
-  - `qri export`: `/working_directory/dataset_name`
-  - `qri export` a peer's dataset: `/working_directory/peername/dataset_name`
-  - `/export`: `/Downloads/dataset_name`
+### Saving
 
-Export should export blank/templated versions of the different dataset
-sections:
+The command-line tool will require a filename to save the export to. The frontend will prompt with a standard "Save As" dialog box.
+
+### Blank
+
+The command-line tool will also allow a "blank export" using the `--blank` flag to create an empty file of the requested type.
+
   - `qri export --blank header`
   - `qri export --blank transform`
   - `qri export --blank viz`
 
+### Importing
 
+As explicit goal of the export process is that an exported dataset can be reimported in the future (possibly with modifications), and not lose any fidelity in the process. For example, all metadata should still be present, and a file that is not modified at all should be treated as an exact duplicate of the dataset that was exported.
 
-
-
-
-
-
+Of course this won't always be possible if certain options are used, such as if the user requests the header not be exported, but assuming this isn't the case, information should not be lost.
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-<!-- This is the technical portion of the RFC. Explain the design in sufficient detail that:
+The top-level `Export` will be passed a struct that contains a number of other structs, each roughly corresponding to the categories of options mentioned above.
 
-- Its interaction with other features is clear.
-- It is reasonably clear how the feature would be implemented.
-- Corner cases are dissected by example.
+```
+type ExportOptions struct {
+  Section  ExportSectionOptions
+  Format   ExportFormatOptions
+  Encoding ExportEncodingOptions
+  Option   ExportMiscOptions
+}
+```
 
-The section should return to the examples given in the previous section, and explain more fully how the detailed proposal makes those examples work. -->
+The contents of each of these substructs will be determined during development.
+
+In order to avoid needing to add an excessive number of command-line arguments to the `qri` executable, each of these substructs will be a single flag, which can take options in a "key=value" format. For example:
+
+```
+--export-sections all
+--export-sections meta,body
+--export-format header=yaml
+--export-format body=json
+--export-format file=xlsx
+--export-encoding charset=utf-8
+--export-option metadata-in-file=xlsx
+```
+
+For the "high-level" "preset" style flags, the export command will use the `export-as` flag, like this:
+
+```
+qri export me/my-dataset --export-as html save_to.html
+qri export me/my-dataset --export-as excel save_to.xlsx
+```
+
+There is no struct corresponding to the `--export-as` flag. Rather, a given value of this flag will translate into a specific instance of the ExportOptions structure, using reasonable defaults for the requested output.
+
+For instance, `--export-as excel` may be treated like:
+
+```
+qri export --export-sections all \
+           --export-format file=xlsx \
+           --export-option metadata-in-file=xlsx
+```
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
-Why should we *not* do this?
+There is inherent complexity around this feature. However, we believe the benefits of having a strong interop story outway the cost of the added complexity. 
 
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
-<!-- - Why is this design the best in the space of possible designs?
-- What other designs have been considered and what is the rationale for not choosing them?
-- What is the impact of not doing this? -->
+An alternative to this feature would be to just give users raw data, in a Qri-specific format, and ask them to write their own conversion tools. We have chosen not to take this approach in order to hopefully encourage others to use Qri.
 
 # Prior art
 [prior-art]: #prior-art
 
-<!-- Discuss prior art, both the good and the bad, in relation to this proposal.
-A few examples of what this can include are:
-
-- Does this feature exist in other places and what experience have their community had?
-- For community proposals: Is this done by some other community and what were their experiences with it?
-- For other teams: What lessons can we learn from what other communities have done here?
-- Papers: Are there any published papers or great posts that discuss this? If you have some relevant papers to refer to, this can serve as a more detailed theoretical background.
-
-This section is intended to encourage you as an author to think about the lessons from other projects, provide readers of your RFC with a fuller picture.
-If there is no prior art, that is fine - your ideas are interesting to us whether they are brand new or if it is an adaptation from other languages.
-
-Note that while precedent set by other projects is some motivation, it does not on its own motivate an RFC.
-Please also take into consideration that Qri sometimes intentionally diverges from other projects. -->
+Export is a common feature is nearly all document editing and data handling applications. Often it may use the name "Save As" with conversion options.
 
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-<!-- - What parts of the design do you expect to resolve through the RFC process before this gets merged?
-- What parts of the design do you expect to resolve through the implementation of this feature before stabilization?
-- What related issues do you consider out of scope for this RFC that could be addressed in the future independently of the solution that comes out of this RFC? -->
+How many options will need to be supported in the "Misc" section?
+
+Is there a better way to divide up the structure that represents all ExportOptions?
