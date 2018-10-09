@@ -58,7 +58,7 @@ The components of a dataset use a standard naming scheme. Exporting a single com
 | viz script | "viz.html" |
 | reference | "ref.txt" |
 
-The "dataset.json" file contains the header components that describe the dataset: the meta, structure, and commit. The "ref.txt" file contains the path of the dataset on the distributed web, as this value clearly can't be stored in the dataset itself, but it necessary for re-importing.
+The "dataset.json" file contains the header components that describe the dataset: the meta, structure, and commit. The "ref.txt" file contains the full reference string, including human name and path on the distributed web. Clearly, this value can't be stored in the dataset itself, but it necessary for re-importing.
 
 ### Zip format
 
