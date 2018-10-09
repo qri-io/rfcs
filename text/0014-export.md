@@ -44,6 +44,7 @@ The options that `export` should allow include:
     * charset (usually utf-8)
 * Miscellaneous options
     * file-format specific metadata (like putting the header into xlsx)
+    * outputting a directory instead of zip (only for cmd-line)
     
 ### Component naming
 
@@ -54,8 +55,11 @@ The components of a dataset use a standard naming scheme. Exporting a single com
 | header | "dataset.json" |
 | body | "body.json" |
 | transform script | "transform.sky" |
-| viz script | "viz.html" |    
-    
+| viz script | "viz.html" |
+| reference | "ref.txt" |
+
+The "dataset.json" file contains the header components that describe the dataset: the meta, structure, and commit. The "ref.txt" file contains the path of the dataset on the distributed web, as this value clearly can't be stored in the dataset itself, but it necessary for re-importing.
+
 ### Zip format
 
 If more than one file needs to be exported, Qri will create a single zip file containing a directory with the standardized filenames. This is pretty similar to how many modern file formats work, such as `.ods`.
@@ -114,6 +118,7 @@ The command-line arguments corresponding to these substructs are either simple s
 --format-file xlsx
 --encoding-charset utf-8
 --metadata-in-file true
+--directory-of-files true
 ```
 
 The final example "metadata-in-file" is part of the `Misc` struct.
