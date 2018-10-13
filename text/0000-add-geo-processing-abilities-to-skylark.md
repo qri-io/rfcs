@@ -1,4 +1,4 @@
-- Feature Name: Add geo processing abilities to skylark 
+- Feature Name: Add geo processing abilities to starlark 
 - Start Date: 2018-10-02
 - RFC PR: <!-- (leave this empty) -->
 - Issue: <!-- (leave this empty) -->
@@ -18,10 +18,10 @@ to distribute these types of dataset
 [guide-level-explanation]: #guide-level-explanation
 
 When working with spatial datasets, those associated with a point, line, polygon etc we often need to be able to perform manipulations
-of the data based on those geometries. The Geo module of sklark provides the basic data types and methods to be able to do just this.
+of the data based on those geometries. The Geo module of Starlib provides the basic data types and methods to be able to do just this.
 Based on the python [Shapley](https://pypi.org/project/Shapely/) library the Geo module allows you to perform operations such as 
 
-- Load Points Lines and Polygons in GeoJSON format and represent these as types withing qri
+- Load Points Lines and Polygons in GeoJSON format and represent these as types within qri
 - Calculate distances between geometric features 
 - Perform filtering based on geometric conditions such as Within, Intersects, Contains etc 
 - Manipulate lines and polygons with operations like intersects, union etc.
@@ -29,26 +29,49 @@ Based on the python [Shapley](https://pypi.org/project/Shapely/) library the Geo
 Some use-cases where this would be useful would be 
 
 - Working with 311 complaint data from a open government data portal and wanting to produce a summary of counts of complaint by type in each census tract. This would require grabbing data from the dataset but also the census tracts for an area and performing a spatial join and aggregation on that data.
-require performing a spatial join between the 311 data and a census tract polygon layer for the same region 
 - Augmenting a dataset of bird sightings with the distance to the nearest wetlands.
 - Calculating the overlap of flood regions and building footprints within a region to assess risk
 
-An example of this might look like:
+An example of this which takes a dataset of 311 complaints, downloads the New York borough boundaries form the data portal and then counts how many complaints are in each borough, might look like this:
 
 ```python 
-use('geo')
+load("qri.sky", "qri")
+load("http.sky", "http")
+load("geo.sky", "geo")
 
-def download(qri):
+def download(ds):
 
+	# Download the New York Borough Boundaries
+	res = http.get("http://data.beta.nyc//dataset/68c0332f-c3bb-4a78-a0c1-32af515892d6/resource/7c164faa-4458-4ff2-9ef0-09db00b509ef/download/42c737fd496f4d6683bba25fb0e86e1dnycboroughboundaries.geojson"
+	
+	boroughs = res.json()
+	ds.set_body({complaints: ds, boroughs: boroughs})
+	
+	return 
+	
 def transform(qri):
    body = qri.get_body()
-   tracts = qri.http.get('http://somls
-   egovernmentwebsite.com/censustracts.geojson')
-   for entry in body:
+   complaints = body['complaints']
+   boroughs = body['boroughs']
+   
+   # Parse then to GeoJSON ( returns an array of each geometry and a dictionary of  properties on that GeoJSON object) 
+	boundaries, properties = geo.parseGeoJSON(boroughs)
+	
+	boro_names = [ boro['name'] for boro in properties]
+	borough_counts = dict(zip(boro_names, [0]*len(boro_names))
+	
+	# Count the amount in each borough
+	for complaint in complaints:
+		point = geo.Point(complaint['latitude'], complaint['longitude'])
+		
+		for boro_name, geom in zip(boro_names, boundaries):
+			if geo.within(point, geom):
+				boro_counts[boro_name] += 1
+	
+	ds.set_body(boro_counts)
+
     
 ```
-
-
 
 
 <!-- Explain the proposal as if it was already included in the language and you were teaching it to a Qri _developer_. That generally means:
@@ -69,94 +92,100 @@ For implementation-oriented RFCs (e.g. for Qri codebase internals), this section
 ### Point 
 
 Point constructor takes an x(longitude) and y(latitude) value and returns a Point object
+
 ```python 
-    use('skylib/geo')
-    p = Point(-44.34, 33)
-    print(p.x,p.y)
-    print(p.lat,p.lng)
+load("geo.sky", "geo")
+
+p = geo.Point(-44.34, 33)
+print(p.x,p.y)
+print(p.lat,p.lng)
 ```
 ### Line 
 Takes either an array of coordinate pairs or an array of point objects and returns the line 
 that connects them.
+
 ```python
-   line = Polygon( [[
-            -120.58593749999999,
-            58.44773280389084
-          ],
-          [
-            -118.47656249999999,
-            50.51342652633956
-          ],
-          [
-            -113.203125,
-            55.178867663281984
-          ]])
-   line2 = Polygon( [ Point([-44.34 , 33.2]), Point([-44.0,33.6]), Point([-44.22, 33.5])])
+load("geo.sky", "geo")
+
+line = geo.Polygon( [[
+        -120.58593749999999,
+        58.44773280389084
+      ],
+      [
+        -118.47656249999999,
+        50.51342652633956
+      ],
+      [
+        -113.203125,
+        55.178867663281984
+      ]])
+line2 = geo.Polygon( [ geo.Point([-44.34 , 33.2]), geo.Point([-44.0,33.6]), geo.Point([-44.22, 33.5])])
 ```
 
+
+### Polygon 
 Takes an array of arrays of coordinate pairs ( or point objects) that define the outer boundary
 and any holes / inner boundaries that represent a polygon. In GIS tradition, arrays of coordinates
 that wind clockwise are filled regions and anti-clockwise represent holes.
 
-### Polygon 
 
 ```python 
-    use('skylib/geo')
-    p = Polygon( [
+load("geo.sky", "geo")
+    
+p = geo.Polygon( [
+        # Outer boundary
+        [[
+          -93.515625,
+          54.16243396806779
+        ],
+        [
+          -99.49218749999999,
+          42.5530802889558
+        ],
+        [
+          -72.0703125,
+          32.24997445586331
+        ],
+        [
+          -72.0703125,
+          43.83452678223682
+        ],
+        [
+          -72.0703125,
+          54.36775852406841
+        ],
+        [
+          -80.85937499999999,
+          57.326521225217064
+        ],
+        [
+          -93.515625,
+          54.16243396806779
+        ]
+        ]],
 
-            # Outer boundary
-            [[
-              -93.515625,
-              54.16243396806779
-            ],
-            [
-              -99.49218749999999,
-              42.5530802889558
-            ],
-            [
-              -72.0703125,
-              32.24997445586331
-            ],
-            [
-              -72.0703125,
-              43.83452678223682
-            ],
-            [
-              -72.0703125,
-              54.36775852406841
-            ],
-            [
-              -80.85937499999999,
-              57.326521225217064
-            ],
-            [
-              -93.515625,
-              54.16243396806779
-            ]
-            ]],
-
-            # Hole in Polygon
-            [[
-              -87.1875,
-              49.61070993807422
-            ],
-            [
-              -87.890625,
-              44.59046718130883
-            ],
-            [
-              -81.2109375,
-              43.83452678223682
-            ],
-            [
-              -80.5078125,
-              48.22467264956519
-            ],
-            [
-              -87.1875,
-              49.61070993807422
-            ]]
-    ])
+        # Hole in Polygon
+        [[
+          -87.1875,
+          49.61070993807422
+        ],
+        [
+          -87.890625,
+          44.59046718130883
+        ],
+        [
+          -81.2109375,
+          43.83452678223682
+        ],
+        [
+          -80.5078125,
+          48.22467264956519
+        ],
+        [
+          -87.1875,
+          49.61070993807422
+        ]]
+])
 ```
 
 ## Geographic operations 
@@ -167,21 +196,25 @@ that wind clockwise are filled regions and anti-clockwise represent holes.
 Generates a buffered region of x units around a point.
 
 ```python
-   p = Point(-44.34,33)
-   polygon = p.buffer(200)
+load("geo.sky", "geo")
+   
+p = geo.Point(-44.34,33)
+polygon = p.buffer(200)
 ```
 
 #### Distances 
 
 ```python 
+load("geo.sky", "geo")
+   
+p1 = geo.Point(-44.34,33)
+p2 = geo.Point(-44.34,32)
 
-   p1 = Point(-44.34,33)
-   p2 = Point(-44.34,32)
-   # Eudlidian Distance
-   p1.distance(p1,p2) 
+# Euclidian Distance
+p1.distance(p1,p2) 
 
-   # Distance on the surface of a sphere with the same radius as Earth
-   p1.distanceGeodesic(p1,p2) 
+# Distance on the surface of a sphere with the same radius as Earth
+p1.distanceGeodesic(p1,p2) 
 ```
 
 ### K-Nearest 
@@ -189,15 +222,18 @@ Generates a buffered region of x units around a point.
 Given a target point T and an array of other points, return the K nearest points to T.
 
 ```python
-   T = Point(-44.34,33)
-   testPoints = [
-      Point(-44.34,32),
-      Point(-44.36,33.1),
-      Point(-46.2,32.13),
-      Point(-45.34,32.1),
-      Point(-46.12,32.1)
-   ]
-   closest = T.KNN(testPoints, k = 3)
+load("geo.sky", "geo")
+   
+target = geo.Point(-44.34,33)
+testPoints = [
+	geo.Point(-44.34,32),
+	geo.Point(-44.36,33.1),
+	geo.Point(-46.2,32.13),
+	geo.Point(-45.34,32.1),
+	geo.Point(-46.12,32.1)
+]
+
+closest = target.KNN(testPoints, k = 3)
 ```
 
 
@@ -205,9 +241,11 @@ Given a target point T and an array of other points, return the K nearest points
 Returns the great circle line segment between point 1 and 2.
 
 ```python
-   p1 = Point(-44.34,33)
-   p2 = Point(-44.34,32)
-   line = p1.greatCirgle(p2)
+load("geo.sky", "geo")
+
+p1 = geo.Point(-44.34,33)
+p2 = geo.Point(-44.34,32)
+line = p1.greatCircle(p2)
 ```
 
 ## Line operations
@@ -217,8 +255,24 @@ Returns the great circle line segment between point 1 and 2.
 Given a line segment, return the polygon that represents that line segment buffered by X units.
 
 ```python 
-   line  =  Line([[]...])
-   poly  = line.buffer(20)
+load("geo.sky", "geo")
+   
+line  =  geo.Line([
+	[
+    	-120.58593749999999,
+       58.44773280389084
+    ],
+    [
+       -118.47656249999999,
+       50.51342652633956
+     ],
+     [
+        -113.203125,
+        55.178867663281984
+     ]
+ ])
+        
+poly  = line.buffer(20)
 ```
 
 ## Length 
@@ -226,7 +280,22 @@ Given a line segment, return the polygon that represents that line segment buffe
 Given a line segment, calculate its length.
 
 ```python 
-   line = Line([[]...])
+load("geo.sky", "geo")
+
+line = geo.Line([
+  [
+    -120.58593749999999,
+    58.44773280389084
+  ],
+  [
+    -118.47656249999999,
+    50.51342652633956
+  ],
+  [
+    -113.203125,
+    55.178867663281984
+  ]
+])
    line.length()
    line.geodesicLength()
 ```
@@ -243,103 +312,156 @@ want to implement but for the first pass Within and Intersects are the main ones
 Returns True if geometry A is entirely contained by geometry B
 
 ```python
-   l = Line([
-          [
-            -120.58593749999999,
-            58.44773280389084
-          ],
-          [
-            -118.47656249999999,
-            50.51342652633956
-          ],
-          [
-            -113.203125,
-            55.178867663281984
-          ]
-        ])
-   p1 = Point([
-          -65.390625,
-          48.45835188280866
-        ])
-   poly1 = Polygon([
-          [
-            [
-              -93.515625,
-              54.16243396806779
-            ],
-            [
-              -99.49218749999999,
-              42.5530802889558
-            ],
-            [
-              -72.0703125,
-              32.24997445586331
-            ],
-            [
-              -72.0703125,
-              43.83452678223682
-            ],
-            [
-              -72.0703125,
-              54.36775852406841
-            ],
-            [
-              -80.85937499999999,
-              57.326521225217064
-            ],
-            [
-              -93.515625,
-              54.16243396806779
-            ]
-          ]
-     ])
+load("geo.sky", "geo")
+   
+l = geo.Line([
+      [
+        -120.58593749999999,
+        58.44773280389084
+      ],
+      [
+        -118.47656249999999,
+        50.51342652633956
+      ],
+      [
+        -113.203125,
+        55.178867663281984
+      ]
+    ])
+p1 = geo.Point([
+      -65.390625,
+      48.45835188280866
+    ])
+poly1 = geo.Polygon([
+      [
+        [
+          -93.515625,
+          54.16243396806779
+        ],
+        [
+          -99.49218749999999,
+          42.5530802889558
+        ],
+        [
+          -72.0703125,
+          32.24997445586331
+        ],
+        [
+          -72.0703125,
+          43.83452678223682
+        ],
+        [
+          -72.0703125,
+          54.36775852406841
+        ],
+        [
+          -80.85937499999999,
+          57.326521225217064
+        ],
+        [
+          -93.515625,
+          54.16243396806779
+        ]
+      ]
+ ])
 
-    poly2 = Polygon([
-          [
-            [
-              -93.515625,
-              54.16243396806779
-            ],
-            [
-              -99.49218749999999,
-              42.5530802889558
-            ],
-            [
-              -72.0703125,
-              32.24997445586331
-            ],
-            [
-              -72.0703125,
-              43.83452678223682
-            ],
-            [
-              -72.0703125,
-              54.36775852406841
-            ],
-            [
-              -80.85937499999999,
-              57.326521225217064
-            ],
-            [
-              -93.515625,
-              54.16243396806779
-            ]
-          ]
-      ])
+poly2 = geo.Polygon([
+      [
+        [
+          -93.515625,
+          54.16243396806779
+        ],
+        [
+          -99.49218749999999,
+          42.5530802889558
+        ],
+        [
+          -72.0703125,
+          32.24997445586331
+        ],
+        [
+          -72.0703125,
+          43.83452678223682
+        ],
+        [
+          -72.0703125,
+          54.36775852406841
+        ],
+        [
+          -80.85937499999999,
+          57.326521225217064
+        ],
+        [
+          -93.515625,
+          54.16243396806779
+        ]
+      ]
+  ])
 
-    within(p1, poly1) # False 
-    within(poly2,poly1) # True 
-    within(line, poly2) # False
+geo.within(p1, poly1) # False 
+geo.within(poly2,poly1) # True 
+geo.within(line, poly2) # False
 ```
 
 
-## Intersects 
+### Intersects 
 
 Similar to within but part of geometry B can lie outside of geometry A and it will still return True
 
 ```python
-    intersects(poly1,poly2) # True 
-    intersects(line,poly1) # False
+load("geo.sky", "geo")
+    
+geo.intersects(poly1,poly2) # True 
+geo.intersects(line,poly1) # False
+```
+
+## GeoJSON
+
+One of the things the library will need to do is to be able to parse common formats into 
+geometries. As qri currently supports JSON I propose we focus on working with GeoJSON for now 
+and we can add support for other common spatial data types later.
+
+```python 
+load("geo.sky", "geo")
+
+geoms, properties = geo.parseGeoJSON({
+	{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        ufo_sightings: 20,
+        population: 40
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -103.0078125,
+          38.272688535980976
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        ufo_sightings: 100,
+        population: 2
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.1875,
+          47.989921667414194
+        ]
+      }
+    }
+  ]
+}
+})
+
+# this would result in geoms being an array of geo.Point objects and properties being an array of the point properties [ {ufo_sightings: 20, population: 40}, {ufo_sightings: 100, population: 2}
+ 
 ```
 
 
@@ -368,6 +490,8 @@ python developers.
 <!-- - Why is this design the best in the space of possible designs?
 - What other designs have been considered and what is the rationale for not choosing them?
 - What is the impact of not doing this? -->
+
+
 
 # Prior art
 [prior-art]: #prior-art
