@@ -15,26 +15,24 @@ An early Qri user recently gave us some feedback:
 
 > when I was writing a transformation, it wasn't super clear what needed to happen in the sky file and what needed to happen in the dataset.yml. I started out with both and had to deal with a bunch of errors which stemmed from (I think) me accidentally specifying things in both places or in the wrong place. In particular I wasn't sure what runs first. For example, does the ds in the transformation know the schema specified in dataset.yml or does qri check the output of transform against the specified schema? 
 
-To me the root of this problem concern is not having a clear mental model of what will happen when the user runs `qri new` or  `qri save`. In some ways this makes sense, because Qri is brand new. For that same reason it's important to introduce a consistent, digestable mental model as early as possible. To properly respond to this feedback, I think we need to clearly document _how outside data gets into Qri_ in a way that becomes natural with practice, but has as few exceptions & "gotchas" as possible.
+What I'm hearing is Qri doesn't have clear mental model of what will happen when the user runs `qri new` or  `qri save`. In some ways this makes sense, Qri is brand new. For that same reason it's important to introduce a consistent, digestable mental model as early as possible.
+
+To properly respond to this feedback, we need to clearly document _how outside data gets into Qri_ in a way that becomes natural with practice. Ideally this process has as few exceptions & "gotchas" as possible. While defining such a mental model, we've come up with changes that have 
 
 Currently, there are three ways to get a dataset into your Qri repo:
 * `new` - create a new dataset
 * `save` - write an update to an existing dataset
 * `add` - download a peer's dataset
 
-Besides the distinction of requiring network access to function, `add` is distinct from `new` and `save` in the sense that no data is being _ingested_ into Qri from an external source. 
+Besides the distinction of requiring network access to function, `add` doesn't _ingest_ data into Qri from an external source, instead moves grabs a dataset from the network. This RFC ignores the `add`  command, implying that `add` should remain a distinct thing that's about getting datasets from a peer. I think this is correct because `add` is both technically and cognitively distinct from `new` and `save`.
 
-This RFC proposses merging "new" and "save", making all commands that put outside data into Qri happen in one place.  I think `add` should remain a distinct thing that's about getting datasets from a peer, an operation that is both technically and cognitively different.
-
-By merging the two commands, we can write documentation that builds up a single mental model of how external data gets into Qri. Users can leverage this mental model to predict what Qri will do, even in a novel use. Those familiar with git should begin to think of `qri save` as `git commit`. A simple, frequently used process that behaves consistently.
-
-While I think it's important to unify new & save into a simple, digestable model, I do think there's room for "advanced" tools that circumnavigate this mental model. The issue this RFC grapples with is establishing a simple process to use as a starting point.
-
+### Proposed Change:
+**This RFC proposses merging "new" and "save", making all commands bring outside data into Qri use the same mental model and codepath**. By merging `new` and `save` into just `save` command, we can write documentation that builds up a single mental model of how external data gets into Qri, while also simplfying our code. Users can leverage this mental model to predict what Qri will do, even in a novel use. Users familiar with git should begin to think of `qri save` as `git commit`. A simple, frequently used process that behaves consistently.
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-To get this right it's worth backing all the way up, comparing Qri's versioning model to git. To paint a complete picture. Hopefully this explanation can be copy-pasted into our docs if this RFC is accepted.
+In order to get a "clear mental model" I think we have to back all the way up, comparing Qri's versioning model to git. By building off a git metaphor, it's easier for someone familiar with Git to understand how Qri is different. Much of this isn't new, but what should be ratified in this RFC is the _quality of the explanation_. By reading this someone familiar with git should be able to understand the process Qri undertakes to create a dataset. Hopefully this explanation can be copy-pasted into our docs if this RFC is accepted.
 
 ### Comparing Commits: Qri, GitHub, Git
 Qri builds on ideas popularized in both git and GitHub.
@@ -55,9 +53,9 @@ Qri intentionally has no functionality akin to git branches. Qri is built in a p
 
 Qri is different because data has a different,broader audience than software devs. Microsoft excel has long since surpassed 950 million downloads, GitHub has roughly ~10 million users, git has, I dunno, double that?
 
-With Qri we're making a concerted effort to reduce the complexity associated with version control, getting it into a form that's palettable to an audience that doesn't consider themselves "technical". This is why we use `save` instead of `commit` (don't worry, `commit` is aliased to `save`, plz don't get hyphee devs).
+With Qri we're making a concerted effort to reduce the complexity associated with version control, getting it into a form that's palettable to an audience that doesn't consider themselves "technical". This is why we use `save` instead of `commit` (if you're all about git, don't worry, `commit` is aliased to `save` on the command line).
 
-> Note: There is currently no way to merge a dataset that's been forked. This is bad. We're working on it. Our current thinking is it'll work as closely as possible as git branch merging: `qri merge peer/dataset me/dataset` should have the effect of stitching together the two specified histories into a single entity at `me/dataset`. Unlike git all datasets share a data model, so this should work even with completely different histories.
+> _Note: There is currently no way to merge a dataset that's been forked. This is bad. We're working on it. Our current thinking is it'll work as closely as possible as git branch merging: `qri merge peer/dataset me/dataset` should have the effect of stitching together the two specified histories into a single entity at `me/dataset`. Unlike git all datasets share a data model, so this should work even with completely different histories._
 
 ### Comparing Qri Save to Git Commit
 
@@ -69,30 +67,38 @@ With Qri we're making a concerted effort to reduce the complexity associated wit
 | `qri publish`                 | `git push origin master`        |
 
 #### Both Qri and git use the local filesystem & `pwd`
+Before we get started, it's worth noting that both git and qri use the present-working-directory (`pwd`) to dereference filepaths. Git stores commits in a `.git` directory, one for each repo. Qri instead stores commits in a "content-addressed file system", which is stored in one place on your hard drive. Instead of one `.git` directory in each repository, there is one `.qri` directory for your entire file system,
 
-#### Git Commit "Stores a Snapshot", Qri Save "Computes a dataset"
+_It is possible to have multiple installations of Qri on your machine at once by manipulating the `$QRI_PATH` value. At time of writing (Oct. 2018), we haven't documented this properly._
+
+#### Git Commit Stores a snapshot, Qri Save Computes a snapshot
 while `qri save` and `git commit` are conceptually comparable, they're fairly different animals under the hood.
 
 Git is a _generic_ version control system. It's possible to version any binary data with git, with varying (incredible) degrees of success. The assumptions git makes about the information being versioned are very light (for example, git assumes many differences will occur across newline breaks).
 
-Qri ties a document model to a version control system. This association narrows the number of use cases in which Qri will function, but  delivers the benefit of making Qri _semantically versioned_. many important values to be inferred on the user's behalf. Through the use of transform scripts, the user has total control over how a dataset is computed.
+Git carries the assumption that the data provided to it is the _source of truth_. Git's job is to version things, the user's job is to tell git _what to version_.
+
+Like git, Qri's jobs is to version things. However, Qri is _not_ a generic version control system. Instead Qri only makes versions of a predefined dataset model. This association narrows the number of use cases in which Qri will function, but  delivers the benefit of making Qri _semantically versioned_. Because Qri is programmed to understand the intent & uses of various components of the dataset model, Qri can compute many important values on the user's behalf. This "acting on a user's behalf" comes from a long line of data managment practices. When managing data there is often too much information for the user to feasibly review each row
+
+Through the use of transform scripts, the user has tools to extend & control how a dataset is computed. Qri knows to run the transform in the first place because datasets have exactly one designated place for putting a transform script.
 
 #### Qri has no staging area
-While it is true that "qri save" is doing one less step than the git variant, git users will quickly point out that `git commit -am "changed stuff"` consolidates `git add` and `git commit` into a single step, so it's not much of a "time saver". Git commands are broken out to show that Qri has no concept of a staging area.
+While it is true that "qri save" is doing one less step than the git variant, git users will quickly point out that `git commit -am "changed stuff"` consolidates `git add` and `git commit` into a single step, so it's not much of a time-saver from a keystrokes perpective. Instead I've broken `git add` and `git commit` into two commands to show that Qri has no concept of a staging area.
 
 Instead of a staging area, Qri uses the concept of a _dry run_ to see what would happen without actually committing anything. 
 
-
 #### Qri registries are like git remotes
-Qri Publish is a far less necessary step
+With Qri it's possible to just run `qri save` and follow that with `qri conenct`, and now others will be able to see and consume your dataset.
 
-### Save creates a dataset snapshot
-An initial stab at that mental model
+Qri Publish is a far less necessary step on 
 
+-- --
+
+## Save creates a dataset snapshot
 A dataset commit is a _snapshot_ of a dataset at a given point in time.
 
-Prepare
-Transform
+Prepare - conform input data for saving
+Transform - execute a transform script with the
 Validate
 Save
 
@@ -115,6 +121,8 @@ Save
 
 ### Patches vs. Updates
 
+In Qri we want to support a very
+
 ### Turning Patches into Updates:
 One of the toughest things to sort out with snapshots
 
@@ -127,11 +135,15 @@ The Patch Value Cascade:
 #### stale commit details are always ignored
 There is one exception to this rule: commit `title` and `message`.
 
+The reason for this gets back to the compute vs.
+
 #### supplied files are always full replacements
 This comes from the git
 
 ### saving a dataset you don't own creates a fork
+GitHub introduces the concept of a "fork" which clones a repository from one user's namespace to another.
 
+In Qri it's perfectly acceptable to run `qri export`
 
 ### `new` is just `save` without a previous reference
 
@@ -148,54 +160,55 @@ This comes from the git
   * http `PATCH` requests make the API behave like the command-line 
   * when in a patch, supply `null` to zero-out a field
 
-Here's the new high-level call stack of a successful `save` operation:
+Here's the new high-level call stack of a successful `save` operation, with the corresponding creation step on the right:
 
 ```
-lib.DatasetRequests.Save            // Prepare
-  lib.DatasetRequests.validateSave  // |
-  actions.SaveDataset               // |
-    actions.prepareDataset          // |
-      if ds.Prev:                   // |
-        core.PrepareDatasetUpdate   // |
-      else:                         // |
-        core.PrepareDatasetNew      // |
-    core.CreateDataset              // |
-      if ds.Transform:              // Transform
-        core.ExecTransform          // |
-      dsfs.CreateDataset            // Validate
-        dsfs.prepareDataset         // |
-        dsfs.writeDataset           // Create
+lib.DatasetRequests.Save                Prepare
+  lib.DatasetRequests.validateSave      |
+  actions.SaveDataset                   |
+    actions.prepareDataset              |
+      if ds.Prev:                       |
+        core.PrepareDatasetUpdate       |
+      else:                             |
+        core.PrepareDatasetNew          |
+    core.CreateDataset                  |
+      if ds.Transform:                  Transform
+        core.ExecTransform              |
+      dsfs.CreateDataset                Validate
+        dsfs.prepareDataset             |
+        dsfs.writeDataset               Create
 ```
 
-PrepareDatasetUpdate
+I think it's easiest to write descriptions for each function. This won't be
+
+```golang
+package lib
+
+// Save creates a dataset snapshot from an external source, adding a commit to the dataset history and advancing the dataset reference to the lastest commit
+func (r *DatasetRequests) Save(p *SaveParams, res *repo.DatasetRef) (err error) { 
+  //...
+}
+```
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
 Merging these two commands will pile up the number of command line flags & API params, which is kinda irritating.
 
-More crucially, there are lots of caveats here. It may be worth working harder now to simplify this model
+More crucially, there are lots of caveats here. It may be worth working harder now to simplify this model before merging
 
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
+While I think it's important to unify new & save into a simple, digestable model, I do think there's room for "advanced" tools that circumnavigate this mental model. The issue this RFC grapples with is establishing a simple process to use as a starting point. Later on I'd like to introduce a new command `qri patch` that allows changing dataset components without running `save`. I'm hoping the "patch' info described here will evolve into the atomic unit used for this command, but it'll take some time to develop.
 
 # Prior art
 [prior-art]: #prior-art
 
-<!-- Discuss prior art, both the good and the bad, in relation to this proposal.
-A few examples of what this can include are:
+Um, yeah, [git](https://git-scm.com).
 
-- Does this feature exist in other places and what experience have their community had?
-- For community proposals: Is this done by some other community and what were their experiences with it?
-- For other teams: What lessons can we learn from what other communities have done here?
-- Papers: Are there any published papers or great posts that discuss this? If you have some relevant papers to refer to, this can serve as a more detailed theoretical background.
+Kubernetes Configuration files are another source of inspiration for Qri "computed datasets".
 
-This section is intended to encourage you as an author to think about the lessons from other projects, provide readers of your RFC with a fuller picture.
-If there is no prior art, that is fine - your ideas are interesting to us whether they are brand new or if it is an adaptation from other languages.
-
-Note that while precedent set by other projects is some motivation, it does not on its own motivate an RFC.
-Please also take into consideration that Qri sometimes intentionally diverges from other projects. -->
 
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
@@ -204,3 +217,4 @@ There's still latent tension around naming that isn't yet (and may never be) sol
 * `qri save`
 * `qri add`
 * `qri get`
+Ideally these would be named in a way that is both "instinctual" and easy to tell apart. I'm not sure that's possible.
