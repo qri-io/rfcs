@@ -13,9 +13,12 @@ Simplify "new" and "save" into one algorithm that defines the high-level steps f
 
 An early Qri user recently gave us some feedback:
 
-> when I was writing a transformation, it wasn't super clear what needed to happen in the sky file and what needed to happen in the dataset.yml. I started out with both and had to deal with a bunch of errors which stemmed from (I think) me accidentally specifying things in both places or in the wrong place. In particular I wasn't sure what runs first. For example, does the ds in the transformation know the schema specified in dataset.yml or does qri check the output of transform against the specified schema? 
+> when I was writing a transformation, it wasn't super clear what needed to happen in the sky file and what needed to happen in the dataset.yml. I started out with both and had to deal with a bunch of errors which stemmed from (I think) me accidentally specifying things in both places or in the wrong place. In particular I wasn't sure what runs first. For example, does the ds in the transformation know the schema specified in dataset.yml or does qri check the output of transform against the specified schema?
+> -- @mbattifarano
 
 What I'm hearing is Qri doesn't have clear mental model of what will happen when the user runs `qri new` or  `qri save`. In some ways this makes sense, Qri is brand new. For that same reason it's important to introduce a consistent, digestable mental model as early as possible.
+
+The ambiguity around what goes in the transform and what goes in the dataset.yaml is difficult to decipher when it's not clear which is "processing first". We should make it clear that the details of dataset.yaml are processed onto the dataset _before_ the skylark file, but validation happens after.
 
 To properly respond to this feedback, we need to clearly document _how outside data gets into Qri_ in a way that becomes natural with practice. Ideally this process has as few exceptions & "gotchas" as possible. While defining such a mental model, we've come up with changes that have 
 
@@ -24,7 +27,7 @@ Currently, there are three ways to get a dataset into your Qri repo:
 * `save` - write an update to an existing dataset
 * `add` - download a peer's dataset
 
-Besides the distinction of requiring network access to function, `add` doesn't _ingest_ data into Qri from an external source, instead moves grabs a dataset from the network. This RFC ignores the `add`  command, implying that `add` should remain a distinct thing that's about getting datasets from a peer. I think this is correct because `add` is both technically and cognitively distinct from `new` and `save`.
+Besides the distinction of requiring network access to function, `add` doesn't _ingest_ data into Qri from an external source, instead moves grabs a dataset from the network. This RFC ignores the `add`  command, implying that `add` should remain a distinct thing that's about getting datasets from a peer. I think this is correct because `add` is both technically and cognitively distinct from `new` and `save`. _(NB: the name `add` may be changed in the future)_
 
 ### Proposed Change:
 **This RFC proposses merging "new" and "save", making all commands bring outside data into Qri use the same mental model and codepath**. By merging `new` and `save` into just `save` command, we can write documentation that builds up a single mental model of how external data gets into Qri, while also simplfying our code. Users can leverage this mental model to predict what Qri will do, even in a novel use. Users familiar with git should begin to think of `qri save` as `git commit`. A simple, frequently used process that behaves consistently.
@@ -88,36 +91,40 @@ While it is true that "qri save" is doing one less step than the git variant, gi
 Instead of a staging area, Qri uses the concept of a _dry run_ to see what would happen without actually committing anything. 
 
 #### Qri registries are like git remotes
-With Qri it's possible to just run `qri save` and follow that with `qri conenct`, and now others will be able to see and consume your dataset.
+With Qri it's possible to just run `qri save` and follow that with `qri connect`, and now others will be able to see and consume your dataset.
 
 Qri Publish is a far less necessary step on 
 
 -- --
 
 ## Save creates a dataset snapshot
-A dataset commit is a _snapshot_ of a dataset at a given point in time.
-
-Prepare - conform input data for saving
-Transform - execute a transform script with the
-Validate
-Save
+A dataset commit is a _snapshot_ of a dataset at a given point in time. The following are 
 
 ### Steps
 * **Prepare**
   * screen for incorrect input
   * check for required values
-  * remove unchanged input
-  * turn a _patch_ into an _update_
+  * if `ds.name` isn't provided, infer a name from provided `dataset.yml` bodyFile
+  * if no `prev` value is supplied, confirm the supplied name isn't taken
+  * turn a _patch_ into an _update_:
+    * load any previous version
+    * merge provided patch onto previous version
+    * remove any values set to `null` by the provided patch
+    * remove stale computed values like commit.title & commit.message
 * **Run Transform**
-  * transform scripts receive a _full snapshot_
-  * transform functions execute in a canonical order, calling download, then transform
-  * to pass extra values from one step to the next, supply a tuple of return values
-  * error by calling `error()`
-  * validation is performed post-transformation
-    * use the "qri.validate" method to perform validation within a transform (currently not implemented)
-  * access versions with `qri.load_previous(ds)`
-* **Validate**
+  * transform script is passed the prepared update from the user (eg: things supplied in dataset.yaml)
+  * previous verion of input dataset (if any) is accessible via a helper function: `qri.load_previous(ds.name)`
+* **Compute Automatic Values**
+  * if no `ds.structure.schema` is supplied but body data is provided, a `ds.structure.schema` is inferred from body data. often defaulting to one of `{ "type" : "array" }` or `{ "type" : "object" }` 
+  * calculate `ds.structure.errorCount` by running `ds.structure.schema` against `ds.body` & counting returned number of errors
+  * calculate `ds.structure.checksum` a checksum of `ds.body`
+  * calculate `ds.structure.length`, the length of the dataset in bytes
+  * calculate `ds.structure.entries`, the number of top-level entries in the dataset
+  * set `ds.commit.timestamp` to the current time
+  * if `ds.commit.title` is empty, calculate a string representation of the difference since last version
+  * calculate `ds.commit.signature` using the peer private key
 * **Create Snapshot**
+  * write the data to a content-addressed file system (IPFS)
 
 ### Patches vs. Updates
 
@@ -130,23 +137,32 @@ The Patch Value Cascade:
 * User Supplied Values
 * Scripts
 * Previous Entries
-* Inferred Values
+* Computed Values
 
 #### stale commit details are always ignored
 There is one exception to this rule: commit `title` and `message`.
 
-The reason for this gets back to the compute vs.
+git requires commit information to be provdided via API interaction. Qri allows you to supply commit information in the dataset.yml document. Qri also _exports_ commit information along with a dataset. To smooth out the process of re-importing, any time commit details exactly match a previous version are considered stale, and are removed in the prepare step.
 
 #### supplied files are always full replacements
-This comes from the git
+This comes from git. If you give us a file, Qri will replace the previous version with the provided one. providing `null` removes the previous file in the new snapshot if one existed.
+
+here's all the places we currently accept files:
+```yaml
+viz:
+  scriptpath: ""
+transform:
+  scriptpath: ""
+bodypath: ""
+```
 
 ### saving a dataset you don't own creates a fork
 GitHub introduces the concept of a "fork" which clones a repository from one user's namespace to another.
 
-In Qri it's perfectly acceptable to run `qri export`
+In Qri it's perfectly acceptable to run `qri save`, with a `previous` value that is someone else's dataset. This will "fork" the dataset into your namespace, keeping the previous user's version histry.
 
 ### `new` is just `save` without a previous reference
-
+Creating a commit doesn't require a previous reference. Voilà! No more need for the `new` command.
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
@@ -174,7 +190,7 @@ lib.DatasetRequests.Save                Prepare
     core.CreateDataset                  |
       if ds.Transform:                  Transform
         core.ExecTransform              |
-      dsfs.CreateDataset                Validate
+      dsfs.CreateDataset                Compute Automatic Values
         dsfs.prepareDataset             |
         dsfs.writeDataset               Create
 ```
@@ -208,6 +224,8 @@ While I think it's important to unify new & save into a simple, digestable model
 Um, yeah, [git](https://git-scm.com).
 
 Kubernetes Configuration files are another source of inspiration for Qri "computed datasets".
+
+This builds on previous splitting of add described in [qri-io/notes#3](https://github.com/qri-io/notes/issue/3).
 
 
 # Unresolved questions
