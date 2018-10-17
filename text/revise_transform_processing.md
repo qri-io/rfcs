@@ -174,4 +174,4 @@ What errors (if any) should be presented to the user if:
 * they define a special function, but never make use of `qri.results.[special_function_name]`?
 Most people will do at least _some_ learning by punching the wrong stuff into Qri and negotiating the error. Providing usable error output is more important here.
 
-In this model special functions have no access to each other's state. We often throw around the notion of defining `map` and `reduce` functions for distributed computation. This change seems to remove the predefined
+In this model special functions have no access to each other's state. We often throw around the notion of defining `map` and `reduce` functions for distributed computation. This change removes the predefined dataset input, and allows for a more useful function signature for any future `map` and `reduce` functions. However, there may be some ambiguity to the user (and to use until we have a good think on it) about how exactly the `map` and `reduce` function might relate, as we have explicitly kept the state of each special function separate. 
