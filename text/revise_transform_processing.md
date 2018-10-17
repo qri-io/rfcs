@@ -66,9 +66,9 @@ Ideally, consumers of the return value of `download` have access to whatever the
 
 
 ## Proposed Change:
-I think these questions point to problems with the requirement of uniform tranform function signatures, and a predclared call order. I have concerns about how these requirements will prevent us from adapting to new challenges in the future, and don't provide enough payoff to warrent keeping them araind.
+I think these questions point to problems with the requirement of uniform tranform function signatures, and a predclared call order. I have concerns about how these requirements will prevent us from adapting to new challenges in the future, and don't provide enough payoff to warrent keeping them around.
 
-I'd like to see more support support the basic idea that functions that have different signatures _do different things_. And that isn't really honored here. It's not clear from the above example that download and transform have any predeclared order or capabilities. Transform functions as implemented appear to differ in name only, and the predeclared call order runs the risk of becoming arbitrary. 
+Let's have more support for the basic idea that functions that have different signatures _do different things_. That isn't really honored here. It's not clear from the above example that download and transform have any predeclared order or capabilities. Transform functions as implemented appear to differ in name only, and the predeclared call order runs the risk of becoming arbitrary. 
 
 To solve both of these problems, I'm proposing the following changes:
 * replace the notion of a transform function with a set of predefined _special functions_, where each function has a required signature that fits it's needs
@@ -95,32 +95,32 @@ Here the notion of chaining transform functions is gone. Instead, there is now o
 
 Download is now an example of a _special function_. Special functions are predefined function signatures the Qri environment knows to look for. If a transform script defines a special function, Qri will call it and place the return value of the function at `qri.results[special_function_name]` before calling the main `transform` function. Unlike transform functions, special functions can have any kind of signature, which must be conveyed through documentation. Special functions cannot reference any state that the other produces, and will be called in parallel. I'd like to keep the number of declared special functions to an absolute minimum.
 
-As a special function, `download` now has a unique signature that more closely matches it's intention. Download is intented to _download things_. It has no access to anything local, which is denoted by the empty function signature. Download should do network stuff, then return the results for further processing in `transform`. Transform should modify the dataste, so it's provided a dataset param. All of this will need to be thuroughly documented, and ideally made as a "tab completion" in the Qri frontend editor.
+As a special function, `download` now has a unique signature that more closely matches it's intention. Download is intented to _download things_. It has no access to anything local, which is denoted by the empty function signature. Download should do network stuff, then return the results for further processing in `transform`. Transform should modify the dataset, so it's provided a dataset param. All of this will need to be thoroughly documented, and ideally made as a "tab completion" in the Qri frontend editor.
 
 Making the return value of `download` available at `qri.results.download` also helps clarify to the user that by the time `transform` is executing, the qri environment has already called download. This clarifies both what is doing the calling, and when it's been called. Adding to `results` instead of attaching directly to the `qri` object also reduces the chances of API namespace collision.
 
-A side effect of these changes, transform scripts now must define a `transform` function if they wish to have any effect on a dataset. Reducing a transform to this single requirement will make for a consistent point of entry that's easier for both humans and machines to reason about.
+A side effect of these changes, transform scripts now must define a `transform` function if they wish to have any effect on a dataset. Reducing a transform to this single requirement will make for a consistant point of entry that's easier for both humans and machines to reason about.
 
 
 ### Remove `return ds` requirement
 
-An additional change I'd like to make is to make the return value of `transform` optional. Users should be free to simply mutate the passed in `ds` dataset, and have that committed as the result. We'll keep the explict `return ds` as an option in the even that scripts wish to return a distinct dataset object from the one passed in. (This currently isn't possible in Qri as we haven't provided a way to construct a dataset within a transform script, but there's a high likelyhood this functionality will be introduced in the future.)
+An additional change I'd like to make is to make the return value of `transform` optional. Users should be free to simply mutate the passed in `ds` dataset, and have that committed as the result. We'll keep the explict `return ds` as an option in the event that scripts wish to return a distinct dataset object from the one passed in. (This currently isn't possible in Qri as we haven't provided a way to construct a dataset within a transform script, but there's a high likelyhood this functionality will be introduced in the future.)
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
 I'm intentionally keeping this short. Qri staff will implement this feature, and what's important is agreeing upon userland changes. The short list:
 
-* Remove The notion of _transform functions_ from documentation
-* Document All supported special functions
+* Remove the notion of _transform functions_ from documentation
+* Document all supported special functions
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
 ### Proliferation of Function Signatures
-Losing the uniform function defintion requires clarification & documentation of _every_ predefined function available in a transform script. This creates additional overhead for the end user, who now needs to memorize multiple function signatures. This isn't "all bad", however, as functions who's signatures map well to their intended purpose should be easier to remember.
+Losing the uniform function definition requires clarification & documentation of _every_ predefined function available in a transform script. This creates additional overhead for the end user, who now needs to memorize multiple function signatures. This isn't "all bad", however, as functions whose signatures map well to their intended purpose should be easier to remember.
 
-We plan to migate this in a few ways:
+We plan to mitgate this in a few ways:
 * good documentation
 * code completion
 * introducing predefined functions slowly
