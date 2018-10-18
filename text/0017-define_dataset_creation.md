@@ -20,7 +20,7 @@ What I'm hearing is Qri doesn't have clear mental model of what will happen when
 
 The ambiguity around what goes in the transform and what goes in the dataset.yaml is difficult to decipher when it's not clear which is "processing first". We should make it clear that the details of dataset.yaml are processed onto the dataset _before_ the skylark file, but validation happens after.
 
-To properly respond to this feedback, we need to clearly document _how outside data gets into Qri_ in a way that becomes natural with practice. Ideally this process has as few exceptions & "gotchas" as possible. While defining such a mental model, we've come up with changes that have 
+We need to clearly document _how outside data gets into Qri_ in a way that becomes natural with practice. Ideally this process has as few exceptions & "gotchas" as possible. While defining such a mental model, we've come up with changes that have 
 
 Currently, there are three ways to get a dataset into your Qri repo:
 * `new` - create a new dataset
@@ -81,7 +81,7 @@ Git is a _generic_ version control system. It's possible to version any binary d
 
 Git carries the assumption that the data provided to it is the _source of truth_. Git's job is to version things, the user's job is to tell git _what to version_.
 
-Like git, Qri's jobs is to version things. However, Qri is _not_ a generic version control system. Instead Qri only makes versions of a predefined dataset model. This association narrows the number of use cases in which Qri will function, but  delivers the benefit of making Qri _semantically versioned_. Because Qri is programmed to understand the intent & uses of various components of the dataset model, Qri can compute many important values on the user's behalf. This "acting on a user's behalf" comes from a long line of data managment practices. When managing data there is often too much information for the user to feasibly review each row
+Like git, Qri's jobs is to version things. However, Qri is _not_ a generic version control system. Instead Qri only makes versions of a predefined dataset model. This association narrows the number of use cases in which Qri will function, but  delivers the benefit of making Qri _semantically versioned_. Because Qri is programmed to understand the intent & uses of various components of the dataset model, Qri can compute many important values on the user's behalf. This "acting on a user's behalf" comes from a long line of data management practices. When managing data there is often too much information for the user to feasibly review each row
 
 Through the use of transform scripts, the user has tools to extend & control how a dataset is computed. Qri knows to run the transform in the first place because datasets have exactly one designated place for putting a transform script.
 
@@ -98,7 +98,7 @@ Qri Publish is a far less necessary step on
 -- --
 
 ## Save creates a dataset snapshot
-A dataset commit is a _snapshot_ of a dataset at a given point in time. The following are 
+A dataset commit is a _snapshot_ of a dataset at a given point in time. The following oulines the steps that goes into computing a snapshot
 
 ### Steps
 * **Prepare**
@@ -126,18 +126,30 @@ A dataset commit is a _snapshot_ of a dataset at a given point in time. The foll
 * **Create Snapshot**
   * write the data to a content-addressed file system (IPFS)
 
-### Patches vs. Updates
+### User supplied Patches vs. Updates
+In Qri we want to support users supplying both "patches" and "updates". For now, Qri should accomplish this by assuming all input is a "patch", as a "user supplied update" can be interpreted as supplying _all_ values of a dataset.
 
-In Qri we want to support a very
+The most common instances of user-supplied updates will be when using the frontend (our frontend is configured to supply call the API with _all_ values), and when running `save` with an exported dataset archive.
 
-### Turning Patches into Updates:
+Difference between a update and a patch:
+
+* updates are a _complete_ dataset snapshot
+  * `qri save --file=dataset.zip` is an example of a command-line update
+  * stale commit messages are ignored
+* patches are a _set of changes_
+  * to get an update from a patch, we must populate missing values from the previous version
+  * `qri save --file=dataset.yaml` is an example of a patch
+  * http `PATCH` requests make the API behave like the command-line 
+  * when in a patch, supply `null` to zero-out a field
+
+<!-- ### Turning Patches into Updates:
 One of the toughest things to sort out with snapshots
 
 The Patch Value Cascade:
 * User Supplied Values
 * Scripts
 * Previous Entries
-* Computed Values
+* Computed Values -->
 
 #### stale commit details are always ignored
 There is one exception to this rule: commit `title` and `message`.
@@ -167,16 +179,7 @@ Creating a commit doesn't require a previous reference. Voilà! No more need for
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-### Patch vs. Update
-* updates assume a _full snapshot_
-  * `qri save --file=dataset.zip` is an example of a command-line update
-  * stale commit messages are ignored
-* patches mean "infer previous values"
-  * `qri save --file=dataset.yaml` is an example of a patch
-  * http `PATCH` requests make the API behave like the command-line 
-  * when in a patch, supply `null` to zero-out a field
-
-Here's the new high-level call stack of a successful `save` operation, with the corresponding creation step on the right:
+Here's the new high-level sketch of call stack for a successful `save` operation, with the corresponding creation step on the right:
 
 ```
 lib.DatasetRequests.Save                Prepare
@@ -193,17 +196,6 @@ lib.DatasetRequests.Save                Prepare
       dsfs.CreateDataset                Compute Automatic Values
         dsfs.prepareDataset             |
         dsfs.writeDataset               Create
-```
-
-I think it's easiest to write descriptions for each function. This won't be
-
-```golang
-package lib
-
-// Save creates a dataset snapshot from an external source, adding a commit to the dataset history and advancing the dataset reference to the lastest commit
-func (r *DatasetRequests) Save(p *SaveParams, res *repo.DatasetRef) (err error) { 
-  //...
-}
 ```
 
 # Drawbacks
@@ -226,7 +218,6 @@ Um, yeah, [git](https://git-scm.com).
 Kubernetes Configuration files are another source of inspiration for Qri "computed datasets".
 
 This builds on previous splitting of add described in [qri-io/notes#3](https://github.com/qri-io/notes/issue/3).
-
 
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
