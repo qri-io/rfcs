@@ -1,6 +1,6 @@
 - Feature Name: Revise Transform Processing
 - Start Date: 2018-11-15
-- RFC PR: <!-- (leave this empty) -->
+- RFC PR: [qri-io/rfcs#24](https://github.com/qri-io/rfcs/pull/24)
 - Issue: <!-- (leave this empty) -->
 
 # Summary
@@ -66,41 +66,44 @@ Ideally, consumers of the return value of `download` have access to whatever the
 
 
 ## Proposed Change:
-I think these questions point to problems with the requirement of uniform tranform function signatures, and a predclared call order. I have concerns about how these requirements will prevent us from adapting to new challenges in the future, and don't provide enough payoff to warrent keeping them around.
+I think these questions point to problems with the requirement of uniform tranform function signatures, and a strict sequential call order. I have concerns about how these requirements will prevent us from adapting to new challenges in the future, and don't provide enough payoff to warrent keeping them around.
 
 Let's have more support for the basic idea that functions that have different signatures _do different things_. That isn't really honored here. It's not clear from the above example that download and transform have any predeclared order or capabilities. Transform functions as implemented appear to differ in name only, and the predeclared call order runs the risk of becoming arbitrary. 
 
 To solve both of these problems, I'm proposing the following changes:
 * replace the notion of a transform function with a set of predefined _special functions_, where each function has a required signature that fits it's needs
 * replace the "chain of tranform functions" with a single function that applies programmitic changes & returns the finalized dataset
+* all _special functions_ accept a passed `context` object for moving state across special function calls
 * remove the requirement that the final transform function return a dataset
 
 Here's a an example that re-writes the above transform script using the propsosed changes:
 
 ```python
 load("http.sky", "http")
-load("qri.sky", "qri")
 
-def download():
+def download(context):
   res = http.get("https://api.example.com/cats.json")
   return res.json()
 
-def transform(ds):
-  cats = qri.results.download
+def transform(ds, context):
+  cats = context.download
   ds.set_body(cats)
   ds.set_meta("title", "a list of cats from example.com")
 ```
 
-Here the notion of chaining transform functions is gone. Instead, there is now one point entry, a function, `transform` that accepts a dataset. `transform` acts as a "main" function that Qri calls, passing in the user-supplied dataset snapshot (whatever the user provided from either the command line or API). `transform` retains is previous sandbox qualities: access to the user's local qri repository, but no network access, and is now always provided with the user-input dataset. `transform` now also has access to the result of all "special function" calls by referring to `qri.results.[special_function_name]`.
+Here the notion of chaining transform functions is gone. Instead, there is now one point entry, a function, `transform` that accepts a dataset. `transform` acts as a "main" function that Qri calls, passing in the user-supplied dataset snapshot (whatever the user provided from either the command line or API). `transform` retains is previous sandbox qualities: access to the user's local qri repository, but no network access, and is now always provided with the user-input dataset.
 
-Download is now an example of a _special function_. Special functions are predefined function signatures the Qri environment knows to look for. If a transform script defines a special function, Qri will call it and place the return value of the function at `qri.results[special_function_name]` before calling the main `transform` function. Unlike transform functions, special functions can have any kind of signature, which must be conveyed through documentation. Special functions cannot reference any state that the other produces, and will be called in parallel. I'd like to keep the number of declared special functions to an absolute minimum.
+`download` is an example of a _special function_. Special functions are predefined function names and signatures the Qri environment knows to look for. Unlike our current transform functions, special functions have varying signatures, which must be conveyed through documentation. If a transform script defines a special function, Qri will call it and place the return value of the function at `context.[special_function_name]` before calling the main `transform` function. The main `transform` now also has access to the result of all _special function_ calls via the passed in `context`.
 
-As a special function, `download` now has a unique signature that more closely matches it's intention. Download is intented to _download things_. It has no access to anything local, which is denoted by the empty function signature. Download should do network stuff, then return the results for further processing in `transform`. Transform should modify the dataset, so it's provided a dataset param. All of this will need to be thoroughly documented, and ideally made as a "tab completion" in the Qri frontend editor.
+`context` is designed to solve the issue of moving state around during a transform. All special functions will accept a `context` argument. The Qri environment will populate `context` with necessary transfrom state such as `transform.config` and `transform.secret` values. `context` also has an API for passing arbitrary user data via `context.set("key", Value)` and `context.get("key")`.
 
-Making the return value of `download` available at `qri.results.download` also helps clarify to the user that by the time `transform` is executing, the qri environment has already called download. This clarifies both what is doing the calling, and when it's been called. Adding to `results` instead of attaching directly to the `qri` object also reduces the chances of API namespace collision.
+_Note: Most special functions will not be able to reference reference state that another function procduces–even via context–because many special functions and will be called in parallel._
+
+As a special function, `download` now has a unique signature that more closely matches it's intention. Download is intented to _download things_. It has no access to the input dataset, which is denoted by the signature. Download should do network stuff, then return the results for further processing in `transform`. Transform should modify the dataset, so it's provided a dataset param. All of this will need to be thoroughly documented, (and ideally made as a "tab completion" in the Qri frontend editor), but this change helps convey intended use.
+
+Making the return value of `download` available at `context.download` also helps clarify to the user that by the time `transform` is executing, the qri environment has already called download. This clarifies both what is doing the calling, and when it's been called.
 
 A side effect of these changes, transform scripts now must define a `transform` function if they wish to have any effect on a dataset. Reducing a transform to this single requirement will make for a consistant point of entry that's easier for both humans and machines to reason about.
-
 
 ### Remove `return ds` requirement
 
@@ -113,6 +116,8 @@ I'm intentionally keeping this short. Qri staff will implement this feature, and
 
 * Remove the notion of _transform functions_ from documentation
 * Document all supported special functions
+* New `context` object & API
+* Update our tutorials
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -131,26 +136,36 @@ Using this approach moves much of the burden of doing transforms into one place.
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
-### Passed Context
-A close-second alternative considered by the Qri team is to use a _context object_ to state around between predefined functions:
+### Global state object
+A close-second alternative considered by the Qri team is to use a _global object_ to pass state around between predefined functions:
 
 ```python
 load("http.sky", "http")
+load("qri.sky", "qri")
 
-def download(context):
+def download():
   res = http.get("https://api.example.com/cats.json")
   context.set("download", res.json())
 
-def transform(ds, context):
-  cats = context.get("download")
+def transform(ds):
+  cats = qri.results.download
   ds.set_body(cats)
   ds.set_meta("title", "a list of cats from example.com")
 ```
 
-Three problems here:
-* `context` runs a big risk of becoming an unstructured grab-bag mess
-* now `transform` _must_ accept a context parameter, even if it makes no use of context. This is particularly painful when first introducing Qri, which would now require hand waving like "don't worry about the context argument, we'll get to it later".
-* we have no clear way of securing context against being abused in the `download` function, other than reintroducing a predeclared call-order
+While arguably more elegant, this violates a core skylark principle:
+```python
+load("qri.sky", "qri")    # after this load call, skylark "freezes" all values in qri.sky 
+                          # the "qri" value loaded should now be immutable
+
+def download():
+  return ["hello", "world"]
+
+def transform(ds):
+  qri.results.download     # <- this implies a value in the qri object is mutated :(
+```
+
+For this reason we switched to a passed context.
 
 ### Renaming the 'transform' function
 We've also considered a number of alternative names for the function called `transform` in all of the above examples:
