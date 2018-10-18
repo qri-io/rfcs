@@ -12,8 +12,8 @@ and explore datasets, as well as connected to the Qri network to interact with o
 # Motivation
 [motivation]: #motivation
 
-This RFC is a place to document the prefered behaviors of the Qri CLI. By 
-knowing the prefered behaviors, the Qri team can better and faster design new 
+This RFC is a place to document the preferred behaviors of the Qri CLI. By 
+knowing the preferred behaviors, the Qri team can better and faster design new 
 features, squash bugs, and answer questions. 
 
 Each command will be documented with summary, flags, and examples.
@@ -508,7 +508,7 @@ List shows lists of datasets, including names and current hashes.
 The default list is the latest version of all datasets you have on your local 
 qri repository.
 
-When used in conjuction with `qri connect`, list can list a peer's dataset. You
+When used in conjunction with `qri connect`, list can list a peer's dataset. You
 must have `qri connect` running in a separate terminal window.
 
 ```
@@ -626,7 +626,7 @@ create a dataset with a dataset data file:
   -f, --file string       dataset data file in either yaml or json format
   -h, --help              help for new
   -m, --message string    commit message
-      --private           make dataset private. WARNING: not yet implimented. Please refer to https://github.com/qri-io/qri/issues/291 for updates
+      --private           make dataset private. WARNING: not yet implemented. Please refer to https://github.com/qri-io/qri/issues/291 for updates
   -p, --publish           publish this dataset to the registry
       --secrets strings   transform secrets as comma separated key,value,key,value,... sequence
   -t, --title string      commit title
