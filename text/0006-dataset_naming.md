@@ -40,7 +40,7 @@ In a sentence: b5 is the handle of a peer, who has a dataset named comics, and i
 
 The individual components of this reference are:
 
-* handle - The human-friendly name that the creator is using to refer to theirself, somewhat analagous to a username in other systems. We need handles so lots of people can name datasets the same thing.
+* handle - The human-friendly name that the creator is using to refer to theirself, somewhat analogous to a username in other systems. We need handles so lots of people can name datasets the same thing.
 * dataset_name - The human-friendly name that makes it easy to remember and refer to the dataset.
 * profile_id - A unique identifier to let machines uniquely refer to datasets created by this peer, regardless of whether their handle is renamed.
 * network - Protocol name that stores distributed data, defaulting to "ipfs".

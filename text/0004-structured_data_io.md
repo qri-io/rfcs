@@ -49,7 +49,7 @@ or more datasets.
 
 Structured I/O is intended to be a robust set of primitives that
 underpin these tasks. Structured _streams_ (readers & writers) wrap a 
-raw stream of bytes with a parser that tranform raw bytes into _entries_ made
+raw stream of bytes with a parser that transform raw bytes into _entries_ made
 of a standard set language-native types (`int`, `bool`, `string`, etc.)
 Working with entries instead of bytes allows the programmer to avoid thinking
 about the underlying format & focus on the semantics of data instead of

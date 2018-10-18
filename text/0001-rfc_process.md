@@ -71,7 +71,7 @@ into RFCs.
 
 Finally this process should not get in the way. If done properly, day-to-day 
 development should  _accelerate_ once we've accepted enough RFCs to get 
-proposals ahead of current developement.  
+proposals ahead of current development.  
 It should be easier to implement a feature with confidence because implementing 
 new things should just be coding up an already-approved design document.
 I want to save RFCs for design-level features, not day-to-day fixes or 

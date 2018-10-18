@@ -309,7 +309,7 @@ _viz fields:_
 | name         | type     | description |
 |--------------|----------|-------------|
 | `format`     | `string` | designates the visualization configuration syntax, currently only `html` is accepted |
-| `scriptPath` | `string` | location of script that generates the vizualization |
+| `scriptPath` | `string` | location of script that generates the visualization |
 
 
 # Drawbacks
