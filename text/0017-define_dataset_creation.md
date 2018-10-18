@@ -90,11 +90,6 @@ While it is true that "qri save" is doing one less step than the git variant, gi
 
 Instead of a staging area, Qri uses the concept of a _dry run_ to see what would happen without actually committing anything. 
 
-#### Qri registries are like git remotes
-With Qri it's possible to just run `qri save` and follow that with `qri connect`, and now others will be able to see and consume your dataset.
-
-Qri Publish is a far less necessary step on 
-
 -- --
 
 ## Save creates a dataset snapshot
