@@ -20,7 +20,7 @@ What I'm hearing is Qri doesn't have clear mental model of what will happen when
 
 The ambiguity around what goes in the transform and what goes in the dataset.yaml is difficult to decipher when it's not clear which is "processing first". We should make it clear that the details of dataset.yaml are processed onto the dataset _before_ the skylark file, but validation happens after.
 
-We need to clearly document _how outside data gets into Qri_ in a way that becomes natural with practice. Ideally this process has as few exceptions & "gotchas" as possible. While defining such a mental model, we've come up with changes that have 
+We need to clearly document _how outside data gets into Qri_ in a way that becomes natural with practice. Ideally this process has as few exceptions & "gotchas" as possible.
 
 Currently, there are three ways to get a dataset into your Qri repo:
 * `new` - create a new dataset
