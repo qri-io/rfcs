@@ -66,13 +66,13 @@ Ideally, consumers of the return value of `download` have access to whatever the
 
 
 ## Proposed Change:
-I think these questions point to problems with the requirement of uniform tranform function signatures, and a strict sequential call order. I have concerns about how these requirements will prevent us from adapting to new challenges in the future, and don't provide enough payoff to warrent keeping them around.
+I think these questions point to problems with the requirement of uniform transform function signatures, and a strict sequential call order. I have concerns about how these requirements will prevent us from adapting to new challenges in the future, and don't provide enough payoff to warrant keeping them around.
 
 Let's have more support for the basic idea that functions that have different signatures _do different things_. That isn't really honored here. It's not clear from the above example that download and transform have any predeclared order or capabilities. Transform functions as implemented appear to differ in name only, and the predeclared call order runs the risk of becoming arbitrary. 
 
 To solve both of these problems, I'm proposing the following changes:
 * replace the notion of a transform function with a set of predefined _special functions_, where each function has a required signature that fits it's needs
-* replace the "chain of tranform functions" with a single function that applies programmitic changes & returns the finalized dataset
+* replace the "chain of transform functions" with a single function that applies programmitic changes & returns the finalized dataset
 * all _special functions_ accept a passed `context` object for moving state across special function calls
 * remove the requirement that the final transform function return a dataset
 
@@ -95,19 +95,19 @@ Here the notion of chaining transform functions is gone. Instead, there is now o
 
 `download` is an example of a _special function_. Special functions are predefined function names and signatures the Qri environment knows to look for. Unlike our current transform functions, special functions have varying signatures, which must be conveyed through documentation. If a transform script defines a special function, Qri will call it and place the return value of the function at `context.[special_function_name]` before calling the main `transform` function. The main `transform` now also has access to the result of all _special function_ calls via the passed in `context`.
 
-`context` is designed to solve the issue of moving state around during a transform. All special functions will accept a `context` argument. The Qri environment will populate `context` with necessary transfrom state such as `transform.config` and `transform.secret` values. `context` also has an API for passing arbitrary user data via `context.set("key", Value)` and `context.get("key")`.
+`context` is designed to solve the issue of moving state around during a transform. All special functions will accept a `context` argument. The Qri environment will populate `context` with necessary transform state such as `transform.config` and `transform.secret` values. `context` also has an API for passing arbitrary user data via `context.set("key", Value)` and `context.get("key")`.
 
 _Note: Most special functions will not be able to reference reference state that another function procduces–even via context–because many special functions and will be called in parallel._
 
-As a special function, `download` now has a unique signature that more closely matches it's intention. Download is intented to _download things_. It has no access to the input dataset, which is denoted by the signature. Download should do network stuff, then return the results for further processing in `transform`. Transform should modify the dataset, so it's provided a dataset param. All of this will need to be thoroughly documented, (and ideally made as a "tab completion" in the Qri frontend editor), but this change helps convey intended use.
+As a special function, `download` now has a unique signature that more closely matches it's intention. Download is intended to _download things_. It has no access to the input dataset, which is denoted by the signature. Download should do network stuff, then return the results for further processing in `transform`. Transform should modify the dataset, so it's provided a dataset param. All of this will need to be thoroughly documented, (and ideally made as a "tab completion" in the Qri frontend editor), but this change helps convey intended use.
 
 Making the return value of `download` available at `context.download` also helps clarify to the user that by the time `transform` is executing, the qri environment has already called download. This clarifies both what is doing the calling, and when it's been called.
 
-A side effect of these changes, transform scripts now must define a `transform` function if they wish to have any effect on a dataset. Reducing a transform to this single requirement will make for a consistant point of entry that's easier for both humans and machines to reason about.
+A side effect of these changes, transform scripts now must define a `transform` function if they wish to have any effect on a dataset. Reducing a transform to this single requirement will make for a consistent point of entry that's easier for both humans and machines to reason about.
 
 ### Remove `return ds` requirement
 
-An additional change I'd like to make is to make the return value of `transform` optional. Users should be free to simply mutate the passed in `ds` dataset, and have that committed as the result. We'll keep the explict `return ds` as an option in the event that scripts wish to return a distinct dataset object from the one passed in. (This currently isn't possible in Qri as we haven't provided a way to construct a dataset within a transform script, but there's a high likelyhood this functionality will be introduced in the future.)
+An additional change I'd like to make is to make the return value of `transform` optional. Users should be free to simply mutate the passed in `ds` dataset, and have that committed as the result. We'll keep the explicit `return ds` as an option in the event that scripts wish to return a distinct dataset object from the one passed in. (This currently isn't possible in Qri as we haven't provided a way to construct a dataset within a transform script, but there's a high likelihood this functionality will be introduced in the future.)
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
