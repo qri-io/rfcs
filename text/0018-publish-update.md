@@ -45,7 +45,7 @@ Update brings your data to the latest known version of a dataset. Update comes i
 Both types of update will be accessed via the same command like and API interfaces, they only differ based on the dataset reference in question.
 
 #### Updating a peer's dataset
-Running update on a peer dataset checks to see if the peer is online and calls `get_dataset`, if the version is different, it'll grab that dataset. If the peer in question is offline we can't check for updates. Once `publish` also writes to registries, we can check the registry for updates to help aleviate the avilability problem.
+Running update on a peer dataset checks to see if the peer is online and calls `get_dataset`, if the version is different, it'll grab that dataset. If the peer in question is offline we can't check for updates. Once `publish` also writes to registries, we can check the registry for updates to help aleviate the availability problem.
 
 Later on we'll want to do proactive checks for updates by submitting a list of dataset refs for which we'd like to grab updates to peers, which will let us display things like "your dataset is out of date, update?" in user interfaces.
 
