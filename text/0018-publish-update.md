@@ -33,16 +33,16 @@ Running `publish` with a configured registry should POST a dataset _summary_ to 
 ## Update
 Update brings your data to the latest known version of a dataset. Update comes in two flavors:
 * Updating Someone else's dataset
-* Updating A Dataset You Own
+* Updating A Dataset in your namespace
 Both types of update will be accessed via the same command like and API interfaces, they only differ based on the dataset reference in question.
 
 #### Updating a peer's dataset
 Running update on a peer dataset checks to see if the peer is online and calls `get_dataset`, if the version is different, it'll grab that dataset. If the peer in question is offline we can't check for updates. Once publish pushes to the registry we can check the registry for updates.
 
-Later on we'll want to do proactive checks for updates by submitting a list of dataset refs we'd like to grab updates for to peers and registries.
+Later on we'll want to do proactive checks for updates by submitting a list of dataset refs for which we'd like to grab updates to peers, which will let us display things like "your dataset is out of date, update?" in user interfaces.
 
-#### Updating a dataset you own
-running update on a dataset in your namespace will check if a transform script is specified, If so, it'll re-execute the transform & check for changes. If changes exist it'll create a commit.
+#### Updating a dataset in your namespace
+Running update on a dataset in your namespace will check if a transform script is specified, If so, it'll re-execute the transform & check for changes. If changes exist it'll create a commit.
 
 Manual changes to a dataset are still run with `qri save`. Calling update on a dataset with no transform script is an error. That error should tell users to run `qri save`.
 
@@ -57,12 +57,12 @@ publish and update are both steps that require an existing dataset.
 $ qri publish --help
 
 Description:
-  Qri publish makes your dataset available to others. While online peers that 
+  Qri publish makes your dataset available to others. While online, peers that 
   connect to you can only see datasets and versions that you've published. 
   publishing a dataset always makes all previous history entries available.
 
   By default publish also publishes your dataset to all configured registries,
-  to publish to only specific registries, use the --
+  to publish to only specific registries, use the --registries flag.
 
 Examples:
   # publish the latest version of a dataset
@@ -77,7 +77,7 @@ Examples:
 Flags:
   --delete -d       unpublish the specified dataset
   --no-registry -r  don't publish to the registry
-  --registries      comma separated list of registries to publish to, overrides --no-registry
+  --registries      comma separated list of registries to publish to
 ```
 
 #### API:
@@ -99,12 +99,13 @@ $ qri update --help
 
 Description:
   Update fast-forwards your dataset to the latest known version. If the dataset
-  is owned by a peer, update will ask the peer for any new versions and download
-  them.
+  is not in your namespace (i.e. dataset name doesn't start with your peername), 
+  update will ask the peer for any new versions and download them.
 
-  Calling update on a dataset you own will advance your dataset by re-running 
-  any specified transform, creating a new version of your dataset in the process.
-  If your dataset doesn't have a transform script, update does nothing.
+  Calling update on a dataset in your namespace will advance your dataset by 
+  re-running any specified transform script, creating a new version of your 
+  dataset in the process. If your dataset doesn't have a transform script, 
+  update will error.
 
 Examples:
   # get the freshest version of a dataset from a peer
@@ -131,8 +132,8 @@ POST http://localhost:2503/update/other_person/dataset
 # update your local dataset by re-running the dataset transform
 POST http://localhost:2503/update/me/dataset_with_transform
 
-# supply secrets to an update, publish on successful run
-POST http://localhost:2503/update/me/dataset_with_transform?publish=true -H secrets=keyboard,cat
+# supply secrets to an update via request headers, publish on successful run
+$curl -X "POST" -H "secrets: keyboard,cat" http://localhost:2503/update/me/dataset_with_transform?publish=true
 ```
 
 ## Library changes
