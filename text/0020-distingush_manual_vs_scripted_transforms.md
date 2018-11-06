@@ -26,7 +26,7 @@ Here's some feedback from @mbattifarano an early Qri user. We've cited this in [
 
 Both are right. Words like "confusion" and "ambiguity" mean lack of clarity. Qri is emphasizing brevity too much, and needs to be more clear, even if it means adding a step or two. To do this properly, each added step should reinforce the mental model of _applying changes to a dataset_.
 
-There's also  a technical motivation for making this change as well What's worse, this "too many things" is costing us reproducibility. Because multiple things can act on a dataset to get form one snapshot to another, we can't accuractly reproduce histories by re-playing transformations. 
+There's also  a technical motivation for making this change as well. What's worse, this "too many things" is costing us reproducibility: Because multiple things can act on a dataset to get form one snapshot to another, we can't accuractly reproduce histories by re-playing transformations. 
 
 ## Proposal distinguish between "Manual" and "Scripted" transforms
 To me, the root of the problem here is we're being concise as the cost of clarity. it's clear that Qri is doing too many things in a single step, and allowing multiple things to affect the outcome of a `qri save`.  To solve this, we'll enforce some new rules and ratchet up some definitions. I want to start by adding formality to the the term "transform":
@@ -37,6 +37,21 @@ To me, the root of the problem here is we're being concise as the cost of clarit
 * transforms can use one or more types of mutations to determine the next snapshot
 
 A transform is the opposite of a history, moving forwards in snapshots instead of backwards. A history is _reproducible_ when you can start at the first snapshot and re-execute each mutation described in the next snapshot. By enforcing the mutually-exclusive mutations, each snapshot is a deterministic record of both state and _how to arrive at that state_ from the previous snapshot.
+
+This reproducibility isn't infallible. A classic example comes from URLs that change between commits. Consider the following transform script:
+
+```python
+load("http.star", "http")
+
+def download(ctx):
+  res = http.get("https://example.com/asset.json")
+  return res.json()
+
+def transform(ds, ctx):
+  ds.set_body(ctx.download)
+```
+
+If the file at `https://example.com/asset.json` changes, it won't be possible to reproduce results through re-execution. This is outside our control, but worth pointing out as a source of breaking reproducibility that we must contend with.
 
 #### Manual Transforms
 @ramfox had the lightbulb moment of conceiving of changes a user makes as a "human transform". The phrase "human transform" invites us to concieve of people manually changing things as a category of transformation, and that's exactly how we'll model it.
@@ -73,7 +88,7 @@ def transform(ds, ctx):
 ```
 
 ### Transform types are mutually exclusive
-Both types of transform are acting on the same components and fields of a dataset (`meta` and `body` components, a `title` field and body `rows`). To ensure reproducibility, we need a new rule: **only one type of transform can mutate a field between two snapshots**. 
+Both types of transform are acting on the same components and fields of a dataset (`meta` and `body` components, a `title` field and body `rows`). To ensure reproducibility, we need a new rule: **each type of transform must only mutate the dataset in a way that is composable with all other transforms**. This means if both manual and scripted transforms are acting at the same time, only one transform can mutate a field between two snapshots.
 
 With this rule in place, we can finally simplify the question "what is the passed in value of `ds` in `transform(ds,ctx)`?". The answer: the previous snapshot.
 
@@ -253,7 +268,7 @@ updated dataset b5/ca_prime_minsters
 
 ## Human and Machine Transforms that affect the same field is now an error
 
-While this RFC places the definition at the field level, our initial implemenation will operate at the component level for simplicity.
+While this RFC places the definition at the field level, our initial implementation will operate at the component level for simplicity.
 
 This does mean we'll need tools to check which components & fields of a dataset a transform affects. Thanks to the way starlark works (and our implementation), this'll be pretty simple.
 
@@ -264,14 +279,19 @@ Ways to resolve the error:
 ## The job of a transform script is to generate the next state snapshot from the existing snapshot
 This means the dataset passed into `transform(ds,ctx)` will be the existing dataset in Qri. Because human and machine transforms are mutually exclusive, script authors only need to consider which fields they wish to remain editable by users.
 
-
 ## `save` is for humans, `update` is for machines
-Save is now the more powerful of the two commands. 
+Save is now the more powerful of the two commands. The functionality of local update is a restricted subset of save, which only allows re-executing script transforms.
 
-By default save will _not_ recall and re-run transforms, but will run provided transforms. running `qri save` without providing a tra
+By default save will _not_ recall and re-run transforms, but will run provided transforms the first time they're given. running `qri save` without providing a transform removes the transform.
 
-Local updates will need some refinement. Running `qri update me/dataset` will now only succeed if a 
-Update gets a new flag: `--recall-tf`
+Local updates will need some refinement. Running `qri update me/dataset` will now only succeed if the head of the history has a transform component.
+Update gets a new flag: `--recall-tf`.
+
+### Manual transforms run before scripted transforms
+This is an implementation detail b/c both types of transforms will now be given head of dataset as a starting point, but running manual transforms first makes it easier to generate the set of fields that scripted transforms can't touch.
+
+### Validation & checking happens after all transforms have run
+To clear up confusion from above, validation is the last thing to happen, because any type of transform may perform the work of taking a dataset from an invalid to a valid state before saving. Again, transforms will always start with either a valid dataset or `null` (if no prior snapshot exists), so there's no need to be concerned with sanitizing input in scripts.
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -288,6 +308,8 @@ The alternative is what we're currently doing, which is a sort of simultaneous t
 
 [Git Hooks](https://githooks.com/) were mentioned as an example of prior art. There isn't much to go on here.
 There is no analog for a transform script in git. Git hooks are the closest concept, but only allow the user to receive notifications and interrupt the commit process, not affect the commit itself
+
+[macros](https://en.wikipedia.org/wiki/Macro_(computer_science)) in spreadsheet programs like Excel, Google Sheets, and OpenOffice have some analogue to what we're doing.
 
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
