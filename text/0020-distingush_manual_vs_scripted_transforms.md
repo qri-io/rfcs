@@ -1,64 +1,86 @@
 - Feature Name: Distinguish Manual & Scripted Tranforms
-- Start Date: <!-- (fill me in with today's date, YYYY-MM-DD) -->
-- RFC PR: <!-- (leave this empty) -->
+- Start Date: 2018-11-05
+- RFC PR: https://github.com/qri-io/rfcs/pull/30
 - Issue: <!-- (leave this empty) -->
 
 # Summary
 [summary]: #summary
 
-Distinguish between manual and scripted transforms to ensure reproducible dataset histories, reduce confusion and overlapping responsibilities.
+Enforce a mutually-exclusive distinction between manual and scripted transforms to ensure reproducible dataset histories, reduce confusion and remove overlapping responsibilities.
 
 # Motivation
 [motivation]: #motivation
 
+Qri has a goal of being as simple as possible, simple can be measured in two ways: 
+
+1. How _concise_ something is: a thing having few steps, requiring fewer instructions
+2. How _clear_ something is: knowing what will happen when you interact with that thing.
+
+Here's some feedback from @mbattifarano an early Qri user. We've cited this in [another other rfc](https://github.com/qri-io/rfcs/blob/master/text/0017-define_dataset_creation.md), but I don't think we're done mining it for cues to improve:
 
 > The role of dataset.yml was a bit confusing to me because it seems to have a few responsibilities some of which are not unique to it. Two concrete examples: first, when I was writing the transformation to create me/fare_per_pax, it wasn't super clear what needed to happen in the sky file and what needed to happen in the dataset.yml. I started out with both and had to deal with a bunch of errors which stemmed from (I think) me accidentally specifying things in both places or in the wrong place. In particular I wasn't sure what runs first. For example, does the ds in the transformation know the schema specified in dataset.yml or does qri check the output of transform against the specified schema?
 
+@dustmop pointed directly at the issue this feedback raised [while we were working on that rfc](https://github.com/qri-io/rfcs/pull/25#discussion_r225723031):
 
-One of many not-so-nice surprises about the way Qri currently works comes from the passed-in dataset in a starlark transform:
+> The feedback also points to a possible ambiguity between transform and dataset.yml, since both can do similar things. This is a distinct (but admittedly related) problem from the semantics of `qri save`. I understand it's hard to answer the original question without cleaning up our mental model, but I think it's also important to address the original question directly.
+
+Both are right. Words like "confusion" and "ambiguity" mean lack of clarity. Qri is emphasizing brevity too much, and needs to be more clear, even if it means adding a step or two. To do this properly, each added step should reinforce the mental model of _applying changes to a dataset_.
+
+There's also  a technical motivation for making this change as well What's worse, this "too many things" is costing us reproducibility. Because multiple things can act on a dataset to get form one snapshot to another, we can't accuractly reproduce histories by re-playing transformations. 
+
+## Proposal distinguish between "Manual" and "Scripted" transforms
+To me, the root of the problem here is we're being concise as the cost of clarity. it's clear that Qri is doing too many things in a single step, and allowing multiple things to affect the outcome of a `qri save`.  To solve this, we'll enforce some new rules and ratchet up some definitions. I want to start by adding formality to the the term "transform":
+
+### A "transform" is a forward transition from one dataset snapshot to another.
+* transforms must mutate one or more non-computed fields of a dataset
+* only one type of transform can be applied to any field per transform
+* transforms can use one or more types of mutations to determine the next snapshot
+
+A transform is the opposite of a history, moving forwards in snapshots instead of backwards. A history is _reproducible_ when you can start at the first snapshot and re-execute each mutation described in the next snapshot. By enforcing the mutually-exculsive mutations, each snapshot is a deterministic record of both state and _how to arrive at that state_ from the previous snapshot.
+
+#### Manual Transforms
+@ramfox had the lightbulb moment of conceiving of changes a user makes as a "human transform". The phrase "human transform" invites us to concieve of people manually changing things as a category of transformation, and that's exactly how we'll model it.
+
+Manual transforms work by providing values directly to Qri, such as with a `dataset.yaml` file:
+```yaml
+meta:
+  title: rational number series
+body: 1,2,3,4,5,6,7,8,9,10]
+```
+
+And a CLI command:
+```
+$ qri save --file=dataset.yaml me/rational_numbers
+saved dataset b5/rational_numbers
+```
+
+We can conceive of the above as a _manual transform_: a series of assignments in a single function call, with no calculations or business logic. The above example is telling Qri to do the following:
+
+```python
+def human_transform(ds):
+  ds.set_meta("title", "rational number series")
+  ds.set_body([1,2,3,4,5,6,7,8,9,10])
+```
+
+#### Scripted Transforms
+With a scripted transform, instead of making manual mutations, an algorithm _automates_ changes to fields of a dataset with programmatic instructions:
+
 ```python
 def transform(ds, ctx):
+  ds.set_meta("title", "rational number series")
+  # use the range function to automate setting the dataset body
+  ds.set_body(range(1,11))
 ```
-Currently, the `ds` passed into that function is 
 
-Experienced users of git model changes 
+### Transform types are mutually exclusive
+Both types of transform are acting on the same components and fields of a dataset (`meta` and `body` components, a `title` field and body `rows`). To ensure reproducibility, we need a new rule: **only one type of transform can mutate a field between two snapshots**. 
 
-There is no analog for a transform script in git. Git hooks are the closest concept, but only allow the user to receive notifications and interrupt the commit process, not affect the commit itself
+With this rule in place, we can finally simplify the question "what is the passed in value of `ds` in `transform(ds,ctx)`?". The answer: the previous snapshot.
 
-@ramfox hit the lightbulb moment of conceiving of changes a user makes as a "human transform". 
-
-We need to separate 
-
+In the past, this was complicated. We can now simplify the story because it's an error to have two transform types act on a single field.
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
-
-### Maintain history as an anchor point
-### Separate human transforms and machine transforms into common use cases
-
-## Human and Machine Transforms that affect the same field is now an error
-
-While this RFC places the definition at the field level, our initial implemenation will operate at the component level for simplicity.
-
-This does mean we'll need tools to check which components & fields of a dataset a transform affects. Thanks to the way starlark works (and our implementation), this'll be pretty simple.
-
-Ways to resolve the error:
-* adjust your commit so that it doesn't affect
-* `--drop-transform` will remove the transform moving forward
-
-We'll use the phrase _control_ to distinguish who's doing what. Errors should read `body is controlled by a transform script. Avoid adding a body with `
-
-## The job of a transform script is to generate the next state snapshot from the existing snapshot
-This means the dataset passed into `transform(ds,ctx)` will be the existing dataset in Qri. Because human and machine transforms are mutually exclusive, script authors only need to consider which fields they wish to remain editable by users.
-
-
-## `save` is for humans, `update` is for machines
-Save is now the more powerful of the two commands. 
-
-By default save will _not_ recall and re-run transforms, but will run provided transforms. running `qri save` without providing a tra
-
-Local updates will need some refinement. Running `qri update me/dataset` will now only succeed if a 
-Update gets a new flag: `--recall-last`
 
 Here's an example flow:
 
@@ -229,46 +251,54 @@ updated dataset b5/ca_prime_minsters
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-<!-- This is the technical portion of the RFC. Explain the design in sufficient detail that:
+## Human and Machine Transforms that affect the same field is now an error
 
-- Its interaction with other features is clear.
-- It is reasonably clear how the feature would be implemented.
-- Corner cases are dissected by example.
+While this RFC places the definition at the field level, our initial implemenation will operate at the component level for simplicity.
 
-The section should return to the examples given in the previous section, and explain more fully how the detailed proposal makes those examples work. -->
+This does mean we'll need tools to check which components & fields of a dataset a transform affects. Thanks to the way starlark works (and our implementation), this'll be pretty simple.
+
+Ways to resolve the error:
+* adjust your commit so that it doesn't affect
+* `--drop-transform` will remove the transform moving forward
+
+We'll use the phrase _control_ to distinguish who's doing what. Errors should read `body is controlled by a transform script. Avoid adding a body with `
+
+## The job of a transform script is to generate the next state snapshot from the existing snapshot
+This means the dataset passed into `transform(ds,ctx)` will be the existing dataset in Qri. Because human and machine transforms are mutually exclusive, script authors only need to consider which fields they wish to remain editable by users.
+
+
+## `save` is for humans, `update` is for machines
+Save is now the more powerful of the two commands. 
+
+By default save will _not_ recall and re-run transforms, but will run provided transforms. running `qri save` without providing a tra
+
+Local updates will need some refinement. Running `qri update me/dataset` will now only succeed if a 
+Update gets a new flag: `--recall-last`
+
+This is a little light, but at a bare minimum we'll need to do the following:
+* add 
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
-Why should we *not* do this?
+The main reason for not doing this is we haven't vetted this approach well enough.
 
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
-<!-- - Why is this design the best in the space of possible designs?
-- What other designs have been considered and what is the rationale for not choosing them?
-- What is the impact of not doing this? -->
+The alternative is what we're currently doing, which is a sort of simultaneous three-way merge between the previous commit, user input, and script results. A more realistic alternative would be further refinements on this model, which we'll hopefully figure out through use.
 
 # Prior art
 [prior-art]: #prior-art
 
-<!-- Discuss prior art, both the good and the bad, in relation to this proposal.
-A few examples of what this can include are:
-
-- Does this feature exist in other places and what experience have their community had?
-- For community proposals: Is this done by some other community and what were their experiences with it?
-- For other teams: What lessons can we learn from what other communities have done here?
-- Papers: Are there any published papers or great posts that discuss this? If you have some relevant papers to refer to, this can serve as a more detailed theoretical background.
-
-This section is intended to encourage you as an author to think about the lessons from other projects, provide readers of your RFC with a fuller picture.
-If there is no prior art, that is fine - your ideas are interesting to us whether they are brand new or if it is an adaptation from other languages.
-
-Note that while precedent set by other projects is some motivation, it does not on its own motivate an RFC.
-Please also take into consideration that Qri sometimes intentionally diverges from other projects. -->
+[Git Hooks](https://githooks.com/) were mentioned as an example of prior art. There isn't much to go on here.
+There is no analog for a transform script in git. Git hooks are the closest concept, but only allow the user to receive notifications and interrupt the commit process, not affect the commit itself
 
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-<!-- - What parts of the design do you expect to resolve through the RFC process before this gets merged?
-- What parts of the design do you expect to resolve through the implementation of this feature before stabilization?
-- What related issues do you consider out of scope for this RFC that could be addressed in the future independently of the solution that comes out of this RFC? -->
+There's some unfinished work I'd like to do in this area, which is document the advantages that come out of this:
+### Maintain history as an anchor point
+This rfc refines our mental model, centering it around state transitions, which is what's happening in the best of times when using git. I'd like to write more about this.
+
+### Separate human transforms and machine transforms into common use cases
