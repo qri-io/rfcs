@@ -36,7 +36,7 @@ To me, the root of the problem here is we're being concise as the cost of clarit
 * only one type of transform can be applied to any field per transform
 * transforms can use one or more types of mutations to determine the next snapshot
 
-A transform is the opposite of a history, moving forwards in snapshots instead of backwards. A history is _reproducible_ when you can start at the first snapshot and re-execute each mutation described in the next snapshot. By enforcing the mutually-exculsive mutations, each snapshot is a deterministic record of both state and _how to arrive at that state_ from the previous snapshot.
+A transform is the opposite of a history, moving forwards in snapshots instead of backwards. A history is _reproducible_ when you can start at the first snapshot and re-execute each mutation described in the next snapshot. By enforcing the mutually-exclusive mutations, each snapshot is a deterministic record of both state and _how to arrive at that state_ from the previous snapshot.
 
 #### Manual Transforms
 @ramfox had the lightbulb moment of conceiving of changes a user makes as a "human transform". The phrase "human transform" invites us to concieve of people manually changing things as a category of transformation, and that's exactly how we'll model it.
@@ -146,7 +146,7 @@ body: body.json
 But re-running save gives us an error:
 ```shell
 $ qri save --file=dataset.yaml me/ca_prime_ministers
-error: transform script and user-supplied datsaet are both trying to set:
+error: transform script and user-supplied dataset are both trying to set:
   body
 
 please adjust either the transform script or remove the supplied body
@@ -178,7 +178,7 @@ meta:
   title: Prime Ministers of Canada
   description: A list of Canadian Prime Ministers
   theme:
-  - govenment
+  - government
   keywords:
   - canada
   - government
@@ -210,7 +210,7 @@ to run an update using the most recent transform, run:
   qri update --recall-tf me/ca_prime_ministers
 ```
 
-This missing transform is vital for reproducibility reasons, the missing transform indicates that no tranform script was executed to get from the snapshot that had the old meta to the new meta.
+This missing transform is vital for reproducibility reasons, the missing transform indicates that no transform script was executed to get from the snapshot that had the old meta to the new meta.
 
 Resurrecting the transform is relatively easy, we follow the instructions from the error:
 ```
@@ -261,8 +261,6 @@ Ways to resolve the error:
 * adjust your commit so that it doesn't affect
 * `--drop-transform` will remove the transform moving forward
 
-We'll use the phrase _control_ to distinguish who's doing what. Errors should read `body is controlled by a transform script. Avoid adding a body with `
-
 ## The job of a transform script is to generate the next state snapshot from the existing snapshot
 This means the dataset passed into `transform(ds,ctx)` will be the existing dataset in Qri. Because human and machine transforms are mutually exclusive, script authors only need to consider which fields they wish to remain editable by users.
 
@@ -273,10 +271,7 @@ Save is now the more powerful of the two commands.
 By default save will _not_ recall and re-run transforms, but will run provided transforms. running `qri save` without providing a tra
 
 Local updates will need some refinement. Running `qri update me/dataset` will now only succeed if a 
-Update gets a new flag: `--recall-last`
-
-This is a little light, but at a bare minimum we'll need to do the following:
-* add 
+Update gets a new flag: `--recall-tf`
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -302,3 +297,16 @@ There's some unfinished work I'd like to do in this area, which is document the 
 This rfc refines our mental model, centering it around state transitions, which is what's happening in the best of times when using git. I'd like to write more about this.
 
 ### Separate human transforms and machine transforms into common use cases
+I think we should also outline some common use cases. For example, I think it'll be a very common pattern to use manual transforms for the `meta` component, and scripted transforms for the `body`.
+
+### One-off transform scripts
+This change opens the door to one-off scripts that automate tedious changes, we should document how that works.
+
+### multiple script recall, transform script composition
+The `--recall-tf` is a beachhead for recalling specific scripts from histories, composing multiple scripts, and other tricks that allow more than just "gimmie the last applied script". The present workaround should be to document using `qri export` with specific versions to get old scripts out of history, then re-supply that exported script with  `qri save`.
+
+### Applicable script detection
+In the future we may want to look across the many scripts that that a user has created / used to build up a "toolbox" of available scripts.
+
+### Use starlark "freeze" to detect what fields a script will manipulate before execution
+Subject of more work. For now we'll just run it & check results
