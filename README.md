@@ -55,7 +55,7 @@ which designates 8 _types_ of change:
   - **test:** Adding missing or correcting existing tests
   - **chore:** Changes to the build process or auxiliary tools and libraries such as documentation generation
 
-We only need RFCs for `feat` and breaking `refator` changes to any of our novel
+We only need RFCs for `feat` and breaking `refactor` changes to any of our novel
 projects, which are the [qri](https://github.com/qri-io/qri) and [dataset](https://github.com/qri-io/dataset)
 repositories. `feat` and `refactor` changes to the [frontend](https://github.com/qri-io/frontend)
 will also require heavy review, but don't require an RFC.
