@@ -11,7 +11,7 @@ Define dataset manifests: a building block for managing subsets of a dataset and
 # Motivation
 [motivation]: #motivation
 
-At Qri we've run into a pretty serious snag: sending a datasets from point-to-point in a manner that's roughly comparable with a centralized service in terms of speed. While working on `qri publish`, we want to pin the blocks in a dataset on an IPFS node that is always available so others can get to it. This requires getting the dataset from a local machine to a publically-hosted Qri registry. This is the rough equivalent of `git push origin master` for Qri.
+At Qri we've run into a pretty serious snag: sending datasets from point-to-point in a manner that's roughly comparable with a centralized service in terms of speed. While working on `qri publish`, we want to pin the blocks in a dataset on an IPFS node that is always available so others can get to it. This requires getting the dataset from a local machine to a publically-hosted Qri registry. This is the rough equivalent of `git push origin master` for Qri.
 
 Without the Qri version of `git push origin master`, Qri's usefulness is degraded. We've written a test that uses out-of-band communication to ask a remote node to `ipfs pin add` while the local machine is on the distributed web, and it's taking anywhere from 5-7 minutes to pin a ~200kb dataset, even with an explicit request to directly connect the two nodes making the transfer.
 
@@ -26,7 +26,7 @@ There is also a related-but-separate set of problems we've encountered when work
 
 Because datasets in Qri are organized into _immutable graphs_ of content addressed blocks. There are two versions of what it means to "have" a dataset. In the first sense of the word, you have the entire graph of blocks that make up a dataset pinned locally. The other meaning of "having" is the result of reading the canonical hash and encoding them into an API, CLI, or exported dataset.
 
-This second sense of "having" is obviously vital for Qri to work properly because the entire world doesn't read raw IPFS blocks, and never will. The problem is the first version is all-or-nothing. You either have the _entire_ dataset graph, or you have to consider the result an emphemeral biproduct of the canonical source.
+This second sense of "having" is obviously vital for Qri to work properly because the entire world doesn't read raw IPFS blocks, and never will. The problem is the first version is all-or-nothing. You either have the _entire_ dataset graph, or you have to consider the result an emphemeral byproduct of the canonical source.
 
 Before we approach the point-to-point sync problem, I'd like to introduce **Manifests** as a method of describing all blocks that compose a dataset in a concise, repeatable way. By having a clear method of defining a complete dataset, we have the tools we need to have meaningful discussion about subsets of a dataset, and make progress on the all-or-nothing issue.
 
@@ -68,7 +68,7 @@ A valid manifest has a few requirements:
 These requirements create a few nice properties:
 * The means that for DAGs with a single root node, the root ID will always be index 0 of `nodes`
 * Using this `nodes` organization, all leaf nodes will be grouped at the end of the list. 
-  * The element after highest index present in the `links` array is also the split point between leaf and branch nodes
+  * The element after highest `From` index present in the `links` array is also the split point between leaf and branch nodes
 * supplying the same DAG to the manifest function must be deterministic: `manifest_of_dag = manifest(dag)`
   * Therefore: `hash(manifest_of_dag) == hash(manifest(dag))`
 * In order to generate a manifest, you need the full DAG, or at least a trusted source of DAG IDs and links
