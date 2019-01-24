@@ -49,7 +49,7 @@ The flag `--zip` can be used to output the full dataset or body as a zipped file
 
 The dataset definition doesn't contain everything related to the dataset. Specifically, the `transform` and `viz` files are stored as separate files, and the dataset definition only links to their paths. In order to export these additional files, the command must use either the `--zip` or `--directory-of-files` options.
 
-QUESTION: Should this be changed? Should it be possible to store Transform and Viz both inline in the Dataset? If so, should Transform and Viz be treated as "sections"?
+It would not be possible to fix this fact, since both `transform` and `viz` are stored in formats that don't match the top-level dataset format. Transform is using starlark, while Viz is using html, neither of which can be treated as json or yaml without compromise. One option to work around this would be to base64 encode or string-escape the fields when including them in a single-file export, but this is a bad default behavior, and should only be done if explicitly requested using the `--section` flag.
 
 ### Output filename
 
@@ -116,7 +116,7 @@ Given the proliferation of options, the clearest way to understand how they are 
 | --zip          | json      | st.format   | [repo]\_[ts].zip  | zipped |
 | --zip --section body | -   | st.format   | [repo]\_body\_[ts].[format] | zipped |
 | --format yaml  | yaml      | base64      | [repo]\_[ts].yaml | - |
-| --format-body json | json  | json        | [repo]\_[ts].yaml | body convert to json |
+| --format-body json | json  | json        | [repo]\_[ts].json | body convert to json |
 | --zip --format-body csv | json  | csv    | [repo]\_[ts].zip  | ds.format != body.format |
 | --section body --format json | - | json  | [repo]\_body\_[ts].json | body convert to json |
 | --o out.yaml   | yaml      | base64      | out.yaml          | - |
@@ -146,4 +146,4 @@ More detail and specification is needed before implementation can go forward.
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-IPFS block exporting.
+IPFS block exporting. We need a way to solve the use case of "export with the purpose of reimporting later" that restored the original dataset with full fidelity. This can be done by exporting all of the original data blocks. A description of this will be provided in a follow-up RFC.
