@@ -16,117 +16,111 @@ An <a href="https://github.com/qri-io/rfcs/blob/master/text/0014-export.md">earl
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-I believe the starting point on getting export to work as well as we want is to enumerate some use cases and figure out what the reasonable defaults are.
+Export is a piece of functionality that will generate the version of a dataset which is external to qri storage, so that it can live instead on a local filesystem. The goal is to have a document defintion of the structured data that has been, up until now, represented only internally by qri. Here are some of the use cases that `export` is meant to handle:
 
-Here are some of the use cases that pop into mind:
+* Getting a local binary copy of a dataset, such that it can be safetly deleted from qri, and later imported without any loss of fidelity or history.
+* Exporting an entire dataset with metadata and body to analyze in a custom script. A single file "json" or "yaml", for example.
+* Converting to a binary format (like xlsx) for use in another program like Excel or OpenOffice.
+* Deciding to stop using qri, and wanting to get all of your data out in a high-fidelity form, with both machine and human readable formats.
 
-* Getting the body as json or csv and writing to a file, the opposite of `save`.
-* Exporting an entire dataset with metadata and body to analyze in a script. A single file "json" or "yaml", for example.
-* Compressing into a zip file for storage / transportation / archive.
-* Exporting with the intent to import later on.
-* Converting to a binary format (like xlsx) for use in another program.
+These should all be doable using `export`.
 
-Considering these possible use cases, the one that most seems to fit the "vanilla" behavior of `export`, what happens when no options are specified, is to export a dataset with metadata and body as a single file.
+Some non-goals:
 
-`qri export me/my_dataset`
+* Retrieving only a single component of a dataset, like the title.
+* Converting a dataset's body to a different format than it is being stored as (csv to json or cbor).
 
-Should produce a json file containing the Dataset / DatasetPod definition, from github.com/qri-io/dataset/dataset.go, as well as the Body stored inline.
+These types of operations should be added to `get` instead, which already has similar functionality.
 
-The options mentioned in the <a href="https://github.com/qri-io/rfcs/blob/master/text/0014-export.md#reference-level-explanation">previous rfc</a> apply mostly to this starting point. For example:
+## Formats
 
-`qri export me/my_dataset --section body`
+Each of the above listed use cases for `export` corresponds to a different export format. Here they are discussed in more detail.
 
-Can be used to only export the body itself.
+### Native export
 
-The flag `--zip` can be used to output the full dataset or body as a zipped file instead:
+The default option is a native export. This consists of a zip file containing two things, a `manifest.cbor` file, then a list of binary blocks containing the data that is directly read from IPFS. The manifest simply enumerates these blocks. This native format is designed to work best with reimports; using it will recreate the dataset with no loss of information.
 
-`qri export me/my_dataset --zip`
+### Foreign export
 
-`qri export me/my_dataset --zip --section body`
+An `export` can also be foreign, using the `--format` flag to choose a specific file format. For example:
 
+```
+qri export --format json me/my_dataset
+```
 
-### Additional files
+```
+qri export --format xlsx me/my_dataset
+```
 
-The dataset definition doesn't contain everything related to the dataset. Specifically, the `transform` and `viz` files are stored as separate files, and the dataset definition only links to their paths. In order to export these additional files, the command must use either the `--zip` or `--directory-of-files` options.
+A file created by these commands still contains as much data about the original dataset, but reimporting it is not guaranteed to end up with the exact same result as the dataset it was exported from.
 
-It would not be possible to fix this fact, since both `transform` and `viz` are stored in formats that don't match the top-level dataset format. Transform is using starlark, while Viz is using html, neither of which can be treated as json or yaml without compromise. One option to work around this would be to base64 encode or string-escape the fields when including them in a single-file export, but this is a bad default behavior, and should only be done if explicitly requested using the `--section` flag.
+For the case of "json", the result will be a single file, with the body stored inline in the document.
 
-### Output filename
+### Full fidelity export
+
+If a user wishes to stop using qri, and wants to get a fully detailed record of the data that was involved in their usage of the system, they can request a full export. This produces a file that contains all the raw binary data from qri, as well as human-readable versions, so that they can work with their exported data without needing qri anymore to process it.
+
+One proposal for this flag:
+
+```
+qri export --takeout me/my_dataset
+```
+
+The `--takeout` flag can be combined with `--format` to decide what the format of the human-readable document should be, defaulting to "json".
+
+## Output filename
 
 An option not mentioned previously is a `-o` flag (long form `--output`), which can be used to set the output path.
 
-This is a powerful option, as it actually has multiple effects:
+This is a powerful option, as it actually a few effects:
 
 * Decides the filename and also the path to which the export is written
-* Can be used to infer the output format via file extension, such as "json" or "yaml"
-* Can imply other options like `--zip` if extension is ".zip" or `--directory-of-files` if path ends with "/".
+* Can be used to infer the output format via file extension, such as "json" or "xlsx" or "zip"
 
-If not specified the default output path should use the file extension based upon the format. Since the default format is "json", this means an `export` with no options will output a ".json" file. It is an error to use both `--format` and `-o` if the output file extension contradicts the format flag.
+If not specified the default output path should use the file extension based upon the format. Since the default format is "native", this means an `export` with no options will output a ".zip" file. It is an error to use both `--format` and `-o` if the output file extension contradicts the format flag.
 
 In addition, the basename of the output path should be derived from the name of the dataset, and should be append a formatted timestamp of the most recent commit to the dataset. For example:
-
+ 
 `qri export me/my_dataset`
-
+ 
 Should be saved to "my_dataset_[formatted_timestamp_of_most_recent_commit].zip". This means exports of the same version of the dataset will have the same filename, while new versions will have different filenames.
+ 
+When the `export` command is completed, the command-line should print a success message that includes the filename of the exported result. This should be done whether the output filename is derived from the dataset name and timestmap, or if its specified using the `-o` flag.
 
-When the `export` command is completed, the command-line should print a success message that includes the filename of the exported result.
+## Transform and viz
 
-### Body format
+For foreign exports, the transform and viz fields (if present in the dataset), will just be represented as paths. The flags `--inline-transform` and `--inline-viz` can be used to store them as base64 encoded files instead.
 
-The currently existing flag `--body-format`, should be changed to `--format-body`, as specified in the previous rfc, in order to better lineup with other proposed options `--format-header` and `--format-file`.
+## All revisions
 
-The `--format-body` flag is special in that it requires an explicit conversion from one format that matches the dataset.structure.format to a different format. This means that if `--format-body` is supplied and causes this conversion to happen, the resulting body format will no longer be correctly described by the structure once it is exported.
+Using the flag `--revision=all` or `--all` will include all past versions of a dataset. This feature will not be implemented at first, but will be added in a follow up change.
 
-Furthermore, this implies that when an exported dataset is used, either by an external tool or by a reimport back into qri, a mismatch between the dataset.structure.format field and the encoding format of the body should be taken to mean that a reconversion is required to turn the body back into its original format.
+## Body format in single-file exports
 
-For example, say we have a dataset as follows:
+When a dataset is being export as a "json" document, it will be necessary to convert the body to also be json. In addition, the Structure.Format field should be updated to reflect this new json format.
 
-```
-{
-  "structure"": {
-    "format": "cbor",
-    ...
-  },
-  "body": ... // cbor data
-  ...
-}
-```
-
-And a user runs:
-
-`qri export me/my_dataset --zip --format-body json`
-
-This will create "my_dataset-[timestamp].zip" which contains "dataset.json" and "body.json", despite dataset.json having the field dataset.structure.format == "cbor". When the zip is reimported into qri, we must convert the body from json back to cbor.
-
-### Body format in single-file exports
-
-It is an error to attempt to export a single dataset with an inline body if the body format does not match the dataset format. In order words, a dataset exported as a single json file (the default case described earlier in this document) should be assumed to have `--format-body json`. If some explicit value is set, it must match the top-level dataset format, otherwise export must fail with an error message.
-
-Since there is both a `--format` option to talk about the export's top-level format, and also a `--format-body` flag to do the same for the body, if only the body is being exported (using `--section body`), the `--format` flag should be allowed as shorthand to refer to `--format-body`. In other words, `--section body --format json` actually implies `--format-body json`.
+It may be desired to export a document as "yaml", or to have a body as a "csv" or other format. In these cases, the body would need to be byte-encoded, so that it could be properly represented in the host format.
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-Given the proliferation of options, the clearest way to understand how they are resolved is to have a high level view comparing the effects of important combinations. Here is a table view:
+A brief summary of the main flags, and their effects:
 
-| options        | ds format | body format | output filename   | notes |
-| -------------- | --------- | ----------- | ----------------- | ------- |
-| default        | json      | json        | [repo]\_[ts].json | body convert to json |
-| --section body | -         | st.format   | [repo]\_body\_[ts].[format] | - |
-| --zip          | json      | st.format   | [repo]\_[ts].zip  | zipped |
-| --zip --section body | -   | st.format   | [repo]\_body\_[ts].[format] | zipped |
-| --format yaml  | yaml      | base64      | [repo]\_[ts].yaml | - |
-| --format-body json | json  | json        | [repo]\_[ts].json | body convert to json |
-| --zip --format-body csv | json  | csv    | [repo]\_[ts].zip  | ds.format != body.format |
-| --section body --format json | - | json  | [repo]\_body\_[ts].json | body convert to json |
-| --o out.yaml   | yaml      | base64      | out.yaml          | - |
-| --o out.json   | json      | json        | out.json          | body convert to json |
-| --o out.zip    | json      | st.format   | out.zip           | zipped |
+| flag          | type    | raw   | document |
+| ------------- | ------- | ----- | -------- |
+| (default)     | native  | yes   | none     |
+| --format json | foreign | no    | json     |
+| --format yaml | foreign | no    | yaml     |
+| --format xlsx | foreign | no    | xlsx     |
+| --takeout     | native  | yes   | json     |
 
-The tricky part of the implemention is resolving the implied, derived, and explicit options.
+Other flags:
 
-TODO: Add pseudocode
-
+```
+-o (--output) Filename to output, file extension implies --format
+--revisions   How many revisions to export, "all" for all
+--all         Same as --revisions=all
+```
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -146,4 +140,6 @@ More detail and specification is needed before implementation can go forward.
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-IPFS block exporting. We need a way to solve the use case of "export with the purpose of reimporting later" that restored the original dataset with full fidelity. This can be done by exporting all of the original data blocks. A description of this will be provided in a follow-up RFC.
+The `--revisions` flag needs a bit more exploration before it is implemented. The plan is to first all the basic export functionality, and come back to revisions later on.
+
+
