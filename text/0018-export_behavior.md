@@ -30,7 +30,7 @@ Some non-goals:
 * Retrieving only a single component of a dataset, like the title.
 * Converting a dataset's body to a different format than it is being stored as (csv to json or cbor).
 
-These types of operations should be added to `get` instead, which already has similar functionality.
+These types of operations should be added to `get` instead, which already has similar functionality. The distinction between `export` and `get` is that `export` is intended to always produce a complete dataset (in some form) whereas `get` is designed to select particular components or subsets of datasets.
 
 ## Formats
 
