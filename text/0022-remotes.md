@@ -11,9 +11,9 @@ Remotes act as a way for any user of Qri to setup their own server that keeps da
 # Motivation
 [motivation]: #motivation
 
-Multiple users have requested a way to keep datasets alive and available within their own network. Currently, we have a public Registry that serves a similar purpose, but it acts too centralized and is also not designed to be duplicated and deployed by existing users. Although IPFS may keep data blocks alive due to its distributed nature, there's no guarantee to keep data around forever unless it is pinned, and the pinning node remains online. Remotes solve this problem by giving control to users, letting them own their data. Having it work as a do-it-yourself service goes a long way torwards turning Qri into a descentralized (as well as distributed) service.
+Multiple users have requested a way to keep datasets alive and available within their own network. Currently, we have a public Registry that serves a similar purpose, but it acts too centralized and is also not designed to be duplicated and deployed by existing users. Although IPFS may keep data blocks alive due to its distributed nature, there's no guarantee to keep data around forever unless it is pinned, and the pinning node remains online. Remotes solve this problem by giving control to users, letting them own their data. Having it work as a do-it-yourself service goes a long way torwards helping Qri fulfill its goal of putting data everywhere.
 
-Relatedly, the concept of the Registry, as it is now, should be deprecated and eventually removed. What is acting as the Registry now should be moved over to a normal Qri backend node that is acting as a remote.
+Relatedly, the current implementation of the Registry should be reworked so that it isn't duplicating work done inside of the normal Qri backend. Rather, it should simply be a variation of a Remote. By avoiding code duplicated across code bases, we will make maintainance easier and have a better story to explain how Qri works.
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
@@ -22,16 +22,23 @@ Some definitions used in this document:
 
 * Registry - the Qri-run service for pinning, searching, etc
 * Remote - the future functionality included in the main Qri binary
-* Client - a Qri command-line program that get commands from stdin
-* Backend - a Qri program that is not the Electron frontend
+* Client - a Qri command-line program that gets commands from stdin
+* Backend - the main Qri command-line program
 
-Currently, the Registry exists to solve multiple problems centered around a distributed system's lack of centralization:
+Currently, the Registry exists to solve multiple problems that are the result of Qri being primarily a distributed system:
 
 * User identity and registration
 * Search
-* Availability
+* Data availability
 
-The Registry acts in a "semi-centralized" way: it provides these types of features, but is not strictly required to use Qri by itself. However, there is currently no way for an average user to run something like the Registry on their own.
+The Registry acts to solve these problems, the first two of which require moving away from a purely distributed network model, and the third of which is an easy thing to add once a centralized component exists. While the Registry isn't strictly required to use Qri, as it can be run entirely in p2p mode, the tradeoff would be losing these types of features.
+
+Our immediate benefit of creating Remotes is that we can unlink the features, and let users run their own services to provide better availability for their datasets. In addition, while a Remote can't provide global search or user identity, it can support a federated model, or a limited version within a limited network.
+
+Once Remotes exist, and contain a sufficient amount of capability, we hope to reposition the Registry as just a special type of Remote that is run by Qri, and is used as the default for users, in addition to its necessary role of handling global user identity and search.
+
+# Reference-level explanation
+[reference-level-explanation]: #reference-level-explanation
 
 Currently functionality that exists only in the Registry now includes:
 
@@ -43,7 +50,7 @@ Currently functionality that exists only in the Registry now includes:
 * `/pins` pinning a dataset
 * `/dsync` data block uploading
 
-Long-term we want to obliviate the need for these to be in a separate executable.
+Long-term we want to obviate the need for these to be in a separate executable.
 
 The plan of action is as follows:
 
@@ -58,9 +65,7 @@ The plan of action is as follows:
 
 Some specific notes as to how this is presented. First, the concept of the Registry is a good way to explain Qri to users: it exists as a way to keep data online even if your own node is not. This shouldn't change as we move to Remotes; instead of deleting the _concept_ of a Registry, we're generalizing it by introduced a Remote as something you can run yourself if you're an advanced user with a special use-case. Secondly, since a Remote is considered an expert-level concept, it's okay for its UX to be slightly more advanced than it may be with other features. The easy thing to use should remain to be the Qri run public Registry. This implies, for example, that setting up a client to use a remote should be more like `git config set remote <url>` instead of `git remote add <name> <url>`, with `remote` as a top-level command.
 
-
-# Reference-level explanation
-[reference-level-explanation]: #reference-level-explanation
+## Posting protocol
 
 Posting a dataset to a Remote involves expanding our current protocol:
 
@@ -73,6 +78,18 @@ Posting a dataset to a Remote involves expanding our current protocol:
 
 In the future, advanced users may want to configure a Remote with full granularity how an acceptance ruleset works. Perhaps they could even use `starlark` as a way to decide this.
 
+## Proposed workflow
+
+Assuming a new Qri remote is up and running, users who wish to push to a remote would have to do three things:
+
+1. Find the URL of a running remote, (let's pretend a remote is running at `https://example.com`)
+2. Run `qri config add remotes.eg https://example.com`. This would create a new remote named `eg`
+3. Publish a dataset using `qri publish --remote eg`
+
+Runnig the default `qri publish` would still push to the default registry. Users should be able to publish to multiple remotes with many `remote` flags, or by separating remote names with commas.
+
+Users can pick whatever name they would like for remotes. Remotes will initially need to be set up with DNS records we'll describe in detail later. Setting up a remote will be an advanced thing for a while.
+
 # Drawbacks
 [drawbacks]: #drawbacks
 
@@ -81,7 +98,7 @@ Centralization is bad, which is why we need to be careful to make Remotes remain
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
-The current version of the Registry as a special citizen is not working for multiple reasons. It must be coalesed into the main codebase.
+The current version of the Registry as a special citizen is not working for multiple reasons. It must be coalesed into the main codebase. Without having Remotes, users must rely upon the single qri-run Registry or their own nodes to keep their data alive, which does not fit many use cases.
 
 # Prior art
 [prior-art]: #prior-art
@@ -91,8 +108,6 @@ Github plays a similar role to git. However, it is already possible for a user t
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-Access controls
-
-
+Access controls, federation
 
 
