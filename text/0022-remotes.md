@@ -15,6 +15,8 @@ Multiple users have requested a way to keep datasets alive and available within 
 
 Relatedly, the current implementation of the Registry should be reworked so that it isn't duplicating work done inside of the normal Qri backend. Rather, it should simply be a variation of a Remote. By avoiding code duplicated across code bases, we will make maintainance easier and have a better story to explain how Qri works.
 
+The eventual goal is to allow advanced users to run their own Remotes, both to keep data alive and provide certain federated services, while the Registry exists as a Qri run service and is the default location for publishing data and centralization.
+
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
@@ -22,8 +24,8 @@ Some definitions used in this document:
 
 * Registry - the Qri-run service for pinning, searching, etc
 * Remote - the future functionality included in the main Qri binary
-* Client - a Qri command-line program that gets commands from stdin
 * Backend - the main Qri command-line program
+* Client - a Qri command-line program that lets users run their own command, as opposed to running as a server that receives remote commands
 
 Currently, the Registry exists to solve multiple problems that are the result of Qri being primarily a distributed system:
 
@@ -31,9 +33,9 @@ Currently, the Registry exists to solve multiple problems that are the result of
 * Search
 * Data availability
 
-The Registry acts to solve these problems, the first two of which require moving away from a purely distributed network model, and the third of which is an easy thing to add once a centralized component exists. While the Registry isn't strictly required to use Qri, as it can be run entirely in p2p mode, the tradeoff would be losing these types of features.
+The Registry acts to solve these problems, the first two of which require moving away from a purely distributed network model, and the third of which is an easy thing to add once a centralized component exists. While the Registry isn't strictly required to use Qri, as Qri can be run entirely in p2p mode, the tradeoff would be losing these types of features.
 
-Our immediate benefit of creating Remotes is that we can unlink the features, and let users run their own services to provide better availability for their datasets. In addition, while a Remote can't provide global search or user identity, it can support a federated model, or a limited version within a limited network.
+Our immediate benefit of creating Remotes is that we can unlink these features, and let users run their own services to provide better availability for their datasets. In addition, while a Remote can't provide global search or user identity, it can support a federated model, or a limited version within a specific network.
 
 Once Remotes exist, and contain a sufficient amount of capability, we hope to reposition the Registry as just a special type of Remote that is run by Qri, and is used as the default for users, in addition to its necessary role of handling global user identity and search.
 
@@ -55,7 +57,7 @@ Long-term we want to obviate the need for these to be in a separate executable.
 The plan of action is as follows:
 
 * Add a flag to Qri's backend to run it as a remote. This will work similarily to the current "read-only" flag, disabling most write functionality.
-* Add APIs to the backend that search a similar purpose to what the Registry is doing now: `POST /dataset` in particular.
+* Add APIs to the backend that serve a similar purpose to what the Registry is doing now: `POST /dataset` in particular.
 * Get enough APIs in the backend such that it can be run as a remote which provides availability to users that want it.
 * Add functionality to Qri's command-line to publish to this remote instead of, or in addition to the public Registry.
 * Over time, move the rest of the functionality from the Registry into the backend remote.
