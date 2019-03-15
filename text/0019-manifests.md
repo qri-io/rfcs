@@ -1,6 +1,6 @@
 - Feature Name: dataset manifests
 - Start Date: 2018-10-25
-- RFC PR: <!-- (leave this empty) -->
+- RFC PR: [#32](https://github.com/qri-io/rfcs/pull/32)
 - Issue: <!-- (leave this empty) -->
 
 # Summary

@@ -1,6 +1,6 @@
 - Feature Name: Remotes
 - Start Date: 02-21-2019
-- RFC PR: <!-- (leave this empty) -->
+- RFC PR: [#36](https://github.com/qri-io/rfcs/pull/36)
 - Issue: <!-- (leave this empty) -->
 
 # Summary

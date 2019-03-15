@@ -1,6 +1,6 @@
 - Feature Name: Export Behavior
-- Start Date: <!-- (fill me in with today's date, YYYY-MM-DD) -->
-- RFC PR: <!-- (leave this empty) -->
+- Start Date: 2019-01-23
+- RFC PR: [#34](https://github.com/qri-io/rfcs/pull/34)
 - Issue: <!-- (leave this empty) -->
 
 # Summary

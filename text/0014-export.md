@@ -1,6 +1,6 @@
 - Feature Name: Export Dataset
 - Start Date: 2018-08-27
-- RFC PR: <!-- (leave this empty) -->
+- RFC PR: [#20](https://github.com/qri-io/rfcs/pull/20)
 - Issue: <!-- (leave this empty) -->
 
 # Summary

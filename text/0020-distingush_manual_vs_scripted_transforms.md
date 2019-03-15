@@ -1,6 +1,6 @@
 - Feature Name: Distinguish Manual & Scripted Tranforms
 - Start Date: 2018-11-05
-- RFC PR: https://github.com/qri-io/rfcs/pull/30
+- RFC PR: [#30](https://github.com/qri-io/rfcs/pull/30)
 - Issue: <!-- (leave this empty) -->
 
 # Summary

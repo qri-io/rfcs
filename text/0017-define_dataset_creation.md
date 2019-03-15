@@ -1,6 +1,6 @@
 - Feature Name: Define Dataset Creation
 - Start Date: 2018-11-15
-- RFC PR: <!-- (leave this empty) -->
+- RFC PR: [#25](https://github.com/qri-io/rfcs/pull/25)
 - Issue: <!-- (leave this empty) -->
 
 # Summary

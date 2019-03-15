@@ -1,6 +1,6 @@
 - Feature Name: Add geo processing abilities to starlark 
 - Start Date: 2018-10-02
-- RFC PR: <!-- (leave this empty) -->
+- RFC PR: [#21](https://github.com/qri-io/rfcs/pull/21)
 - Issue: <!-- (leave this empty) -->
 
 # Summary
