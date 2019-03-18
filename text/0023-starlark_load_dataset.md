@@ -30,10 +30,13 @@ For these reasons, we should make datasets a first class citizen in starlark scr
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
+### `load_dataset`
+This RFC proposes switching to a single method of loading a dataset that is analogous to loading a module. Dataset dependencies will be declared (by convention) grouped together at the top of a script, forming a clear delaration of the datasets this script depends on: 
+
 ```python
 load("http.star", "http")
 # load a dataset into a variable named "fhv"
-load_dataset("b5/nyc_for_hire_vehicles", "fhv")
+fhv = load_dataset("b5/nyc_for_hire_vehicles")
 
 def download(ctx):
   # use the fhv dataset to inform an http request
@@ -52,47 +55,107 @@ def transform(ds, ctx):
 
 In this example, the `load_dataset` statement supplies no optional arguments, it's assumed this dataset is loaded and available in all parts of the script. This RFC defines no optional arguments for `load_dataset`, so loading datasets for global use is the only option available. Considering all datasets on Qri are currently public, this is a sensible place to start.
 
-Knowing that things like private datasets are planned for the future, we need an explicit way to load a dataset that we can build upon. While we can't yet define what those nuances will be, we do need to define _how they will be expressed_. Here are examples of possible scoping statements, expressed as optional arguments: 
+### Access Control
+Knowing that things like "private datasets" are planned for the future, we need an explicit way to load a dataset that we can build upon. While we can't yet define what those nuances will be, we do need to define _how they will be expressed_. Here are examples of possible scoping statements, expressed as optional arguments: 
 
 ```python
 # scope a dataset load to only meta & structure components
-load_dataset("b5/city_residents", "residents", components=["md", "st"])
+residents = load_dataset("b5/city_residents", components=["md", "st"])
 
 # only allow access to "residents" during the "transform" step. "residents" will 
 # be equal to None during all other steps
-load_dataset("b5/city_residents", "residents", steps=["transform"])
+residents = load_dataset("b5/city_residents", steps=["transform"])
 
 # apply differential privacy to all statements that read from the body
-load_dataset("b5/city_residents", "residents", anonymized=True)
+residents = load_dataset("b5/city_residents", anonymized=True)
 
 # require that the permissions of the dataset that results from this transform
 # match the permissions of "b5/city_residents"
-load_dataset("b5/city_residents", "residents", forward_permissions=True)
+residents = load_dataset("b5/city_residents", forward_permissions=True)
 ```
 
 These are suggestions only. We need lots of time to think through how these options will work, this rfc only adds the assumption that those statements will be expressed as options on `load_dataset`. We can build on the already-present assumption that loaded datasets are read-only, making all options pertain to read access.
 
+We _do_ need to declare what the default `load_dataset` expression means in relation to permissions:
+
+```python
+residents = load_dataset("b5/city_residents")
+```
+
+The default load dataset should be taken to mean "load this dataset with the _maximum available permission_". If a dataset is open, the user is free to read from any and all parts of the document.
+
+Combining a default of requesting maximum permission with _restrictive_ permission declared on the imported dataset supports our default stance of an open dataset ecosystem. The onus of declaring how a dataset can be used will fall to the owner of the dataset, and defaulting to max permissions forces the owner to assume that "if it's permitted, someone will use it", which is the correct assumption when attempting to restrict access.
+
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-The general form of `load_dataset` is as follows:
+`load_dataset` has a fairly simple definition:
 
 ```
-def load_dataset(reference, target_name)
+def load_dataset(reference): # return: dataset object
 ```
 
-**reference** is a string reference to a dataset, as defined by our dataset naming conventions elsewhere. Any valid dataset reference should work with one exeption: no "me" statements or context-dependant references are allowed:
+* **reference** is a string reference to a dataset, as defined by our dataset naming conventions elsewhere.
+* **dataset object** the returned value is a dataset object, as defined by ds.NewDataset in `qri-io/startf/ds`.
+
+As mentioned earler, the plan is to expand this definition with options once we've had time to do more research. Theses examples of valid reference strings, with `QmProfile` and `QmHash` being standins for full base-58 encoded hashes:
+
+```python
+load_dataset("b5/dataset")
+load_dataset("b5/dataset@QmProfile/ipfs/QmHash")
+load_dataset("@/ipfs/QmHash")
+```
+
+### `load_dataset` must be top level scope
+`load_dataset` statements will only be allowed within the primary scope of a transform script. Phrased another way: `load_dataset` _cannot_ be called within a function. This limits the scope of what is possible when composing dynamic import statements. This **won't** work:
+
+```python
+load("qri.star", "qri")
+
+# create a dataset of all dataset titles
+def transform(ds, ctx):
+  # error: load_dataset must be called in top level scope
+  datasets = [load_dataset(name) for name in qri.list_datasets()]
+  ds.set_body([ds.get_meta('title') for ds in datasets])
+```
+
+Statements that use scropts to compose import names, however, can and should work:
+
+```python
+pop_years = [load_dataset("b5/population_%s" % year) for year in range(2011,2017)]
+```
+
+The former example is making use of a _priveledged resource_ (the local qri node), while the latter is a convenience function for creating legal string names. For this assumption to hold, priveledged resources must _only_ be available within special functions, an assumption we already enforce.
+
+### Name Resolution
+When the starlark execution environment encounters a `load_dataset` statement, it has to _resolve_ the name, connecting the string reference to a dataset object. This may or may not require network access, depending on if the user currently has all of the specified versions locally. All naming duties required by `load_dataset` will be offloaded to Qri's name resolution system, but a few interactions merit calling out here:
+
+#### Default to fetching non-local dependencies
+By default, any dataset referenced with `load_dataset` that isn't local should be fetched from the network, using whatever heuristics Qri's name resolution system is configured to use (currently: fetching from both the registry & p2p network). This frees the user from having to consider what data they do & do not have. Requiring `load_dataset` be called in top level scope means non-local fetching will run before any special functions (`download`, `transform`) are called. This has the natural effect of requiring dependency resolution before the "main" functions of a transform script can execute.
+
+#### Name resolution errors
+This interaction with network availability will need to be managed. If, for example, a script were run in conjunction with a hypothetical `--offline` flag like this:
+
+```
+$ qri save --offline --file transform.star me/example
+```
+
+Referencing any non-local dataset in `load_dataset` will raise a name resolution error. But if all depencies are locally satisfied, the transform should execute without error.
+
+### Don't pin dependencies by default
+The default behaviour should be to **not pin dependencies**. We should add a new flag to `save` and `update` commands: `--pin-deps` that pins dependencies locally. The reason fro this choice relies on default settings in other parts of Qri. A "stock" installation of Qri defaults to storing datasets in an IPFS repository restricted to 10Gigs of space. In practice most datasets so far have been less than 100Mb in size, and most users coming to Qri either understand how to manually manage their IPFS storage, or are only using IPFS through Qri. These choices accumulate to lots of free space in the 10Gig repository that can go for some time before garbage collection is needed. If garbage collection _is_ required, the first thing that should go are transient dependencies required by previous transform scripts, which will be the case here. Future tools that perform graph analysis on versioned dependency trees can be introduced to add fine-grained pinning review & management. Did I mention that this work never stops?
+
+### Relative "me" references aren't allowed:
+Any valid dataset reference should work with one exeption: no "me" statements.
 
 ```python
 # this will error:
-load_dataset("me/population", "pop")
+pop = load_dataset("me/population")
 # this will work:
-load_dataset("b5/population", "pop")
+pop = load_dataset("b5/population")
 ```
 
-this is to keep transform scripts portable by freeing them from dependencies on execution context.
-
-**target_name** is the name this script will use to refer to this dataset in the script. The supplied string must be a valid starlark variable name.
+This is to keep transform scripts portable by freeing them from dependencies on execution context.
 
 This variable-style import makes sense for datasets, who's names are often lengthy. Unlike package imports, we anticipate it will be very common for dataset names to collide, being distinguished only be peername. this required assign-to-name pattern will help here as well.
 
@@ -100,41 +163,50 @@ This variable-style import makes sense for datasets, who's names are often lengt
 [drawbacks]: #drawbacks
 
 ### differences with `load`
-As currently proposed, there's a subtle-but-important distinction between `load` and `load_dataset` that may cause confusion. Here's an example:
+As currently proposed users are expected to assign the result of `load_dataset`
 ```python
 # load the `http` component of the http "package object"
 load("http.star", "http")
 # load a dataset into a variable named "fhv"
-load_dataset("b5/nyc_for_hire_vehicles", "fhv")
+fhv = load_dataset("b5/nyc_for_hire_vehicles")
 ```
 
-In the `load` statement, the value `http` is defined by the module. writing `load("http.star", "cats")` would error because `cats` is not defined on the http module.
-
-On the other hand `load_dataset` assumes that only _one_ value is available, and it will be assigned to a second, _user-supplied_ argument. calling `load_dataset("b5/nyc_for_hire_vehicles", "cats")` would _not_ error, instead loading the dataset document into a global variable named `cats`. 
+In the `load` statement, the value `http` is defined by the module, which can only be known by reading the source. I find starlark's `load` statement opaque, and don't consider it a pattern we should follow.
 
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
-### return a value from `load_dataset`
-One alternative would be to have `load_dataset` return a value that could be assigned. As an example:
+### load into a user-supplied string
+One alternative would be to have `load_dataset` work a little closer to the way `load` does in starlark, having a user supply a second string argument that names a global variable:
 ```python
-fhv = load_dataset("b5/nyc_for_hire_vehicles")
+# load b5/nyc_for_hire_vehicles into a global variable named "fhv"
+load_dataset("b5/nyc_for_hire_vehicles", "fhv")
+
+# use fhv:
+fhv.get_body()
 ```
 
-I'd prefer to avoid this approach because in the future we will need to make alterations that will make the return value behave less like a variable. If the following option existed:
+I attempted to code this up, it was both difficult to execute, and felt too "magical" in practice. My initial reason for specing this syntax were due to the future need to make alterations that will make the return value behave in different ways during execution. consider the following scenario:
 ```python
-# only allow access to "residents" during the "transform" step. "residents" will 
+# only allow access to "residents" during the "transform" step. "fhv" will 
 # be equal to None during all other steps
-fhv = load_dataset("b5/nyc_for_hire_vehicles", steps=["transform"])
-```
-we need to mutate the value of `fhv` at runtime. I find it easier if the user think of a dataset as a kind of module that behaves differently from a value set to a variable.
+load_dataset("b5/nyc_for_hire_vehicles", "fhv", steps=["transform"])
 
-### alternate nameas
+def download(ctx):
+  fhv.get_body() # error: cannot access 'fhv' during download step
+
+def transform(ds,ctx):
+  fhv.get_body() # this will work
+```
+
+I now realize the problem is not in how the variable is declared, it is that the value stored at `fhv` is _stateful_. How the dataset is named is an orthagonal problem. The return-value style wins out in my mind on account of reading more clearly.
+
+
+### alternate names
 We can also consider alternative names for `load_dataset`. To me the requirements are as follows:
 * show a dependency is being created
 * differ from `load`, which refers to requiring code
 * prefer concise names
-
 
 
 # Prior art
@@ -145,6 +217,33 @@ We're taking a lot of inspiration for the security model for imports & dependenc
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-<!-- - What parts of the design do you expect to resolve through the RFC process before this gets merged?
-- What parts of the design do you expect to resolve through the implementation of this feature before stabilization?
-- What related issues do you consider out of scope for this RFC that could be addressed in the future independently of the solution that comes out of this RFC? -->
+### Loading from history
+One aspect not yet covered by this RFC is how to load previous versions of the dataset a script is affecting. The closest I have so far is supplying some sort of relative ref with no name:
+
+```python
+prev = load_dataset("~1")
+``` 
+
+This clearly needs more thought, I'm hoping to cover this in a subsequent RFC that helps refine & clarify the distinction between _names_ & _selection_.
+
+### Dataset object
+This RFC adds pressure to the api defined around dataset documents in starlark. We're on a collision course with a `dataframe-like api` that'll need to get worked out in a separate RFC. I think we can survive on the current model until a subsequent RFC can be written with extensive research dataframe-like APIs.
+
+### Dynamic dependencies
+This RFC explicitly denies building dynamic dependencies by forcing `load_dataset` to be top-level calls. 
+ 
+I think we should instead follow up with a subsequent rfc to handle dynamic dependencies. I think dynamic dependency loading should happen in a new special function created expressly for this purpose. An example of this would be a `load_datasets` special function that allows dynamic dependencies:
+
+```python
+load("qri.star", "qri")
+
+def load_datasets(ctx):
+  return [load_dataset(name) for name in qri.list_datasets()]
+
+# create a dataset of all dataset titles
+def transform(ds, ctx):
+  datasets = ctx.datasets
+  ds.set_body([ds.get_meta('title') for ds in datasets])
+```
+
+I'd rather introduce this later after more concrete use-cases have been created so we can design a solution that addresses as many as possible while keeping the sandbox model intact. This solution, for example, would not allow http access to determine dependencies.
