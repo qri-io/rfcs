@@ -218,7 +218,7 @@ prev = load_dataset("~1")
 The current thinking is to _not_ do this because it's not safe to assume that "~1" is a dataset meant for public consumption. Loading historical entries clearly needs more thought, I'm hoping to cover this in a subsequent RFC that helps refine & clarify the distinction between _names_ & _selection_.
 
 ### Dataset object
-This RFC adds pressure to the api defined around dataset documents in starlark. We're on a collision course with a `dataframe-like api` that'll need to get worked out in a separate RFC. I think we can survive on the current model until a subsequent RFC can be written with extensive research ondataframe-like APIs.
+This RFC adds pressure to the api defined around dataset documents in starlark. We're on a collision course with a `dataframe-like api` that'll need to get worked out in a separate RFC. I think we can survive on the current model until a subsequent RFC can be written with extensive research on dataframe-like APIs.
 
 ### Dynamic dependencies
 This RFC explicitly denies building dynamic dependencies by forcing `load_dataset` to be top-level calls. 

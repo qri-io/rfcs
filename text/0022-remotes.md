@@ -13,7 +13,7 @@ Remotes act as a way for any user of Qri to setup their own server that keeps da
 
 Multiple users have requested a way to keep datasets alive and available within their own network. Currently, we have a public Registry that serves a similar purpose, but it acts too centralized and is also not designed to be duplicated and deployed by existing users. Although IPFS may keep data blocks alive due to its distributed nature, there's no guarantee to keep data around forever unless it is pinned, and the pinning node remains online. Remotes solve this problem by giving control to users, letting them own their data. Having it work as a do-it-yourself service goes a long way torwards helping Qri fulfill its goal of putting data everywhere.
 
-Relatedly, the current implementation of the Registry should be reworked so that it isn't duplicating work done inside of the normal Qri backend. Rather, it should simply be a variation of a Remote. By avoiding code duplicated across code bases, we will make maintainance easier and have a better story to explain how Qri works.
+Relatedly, the current implementation of the Registry should be reworked so that it isn't duplicating work done inside of the normal Qri backend. Rather, it should simply be a variation of a Remote. By avoiding code duplicated across code bases, we will make maintenance easier and have a better story to explain how Qri works.
 
 The eventual goal is to allow advanced users to run their own Remotes, both to keep data alive and provide certain federated services, while the Registry exists as a Qri run service and is the default location for publishing data and centralization.
 
