@@ -1,26 +1,26 @@
 - Feature Name: starlark load_dataset
 - Start Date: 2018-03-15
-- RFC PR: <!-- (leave this empty) -->
+- RFC PR: [#38](https://github.com/qri-io/rfcs/pull/38)
 - Issue: <!-- (leave this empty) -->
 
 # Summary
 [summary]: #summary
 
-Introduce a global function `load_dataset` to starlark scripts both loads the dataset and declares it as a dependency. Deprecate all `qri.load_dataset` functions, making `load_dataset` the only way to depend on an external dataset.
+Introduce a global function `load_dataset` to starlark scripts that both loads the dataset and declares it as a dependency. Deprecate all `qri.load_dataset` functions, making `load_dataset` the only way to depend on an external dataset.
 
-This RFC assumes all datasets are public. In the future `load_dataset` will be expanded, accepting optional arguments to scope the kinds of access a script is requesting.
+This RFC assumes all datasets are public, and that names refer to a dataset the script author can resolve. In the future `load_dataset` will be expanded, accepting optional arguments to scope the kinds of access a script is requesting.
 
 # Motivation
 [motivation]: #motivation
 
-Qri's goal is to build an environment where datasets are as a first class citizen. Qri currently monitors any call to `qri.load_dataset` and records the loaded dataset as a dependency. This results in a complete dependncy graph.
+Qri's goal is to build an environment where datasets are as a first class citizen. Qri currently monitors any call to `qri.load_dataset` and records the loaded dataset as a dependency. This results in a complete dependency graph.
 
 There are (at least) three problems with this approach: 
 
 * **scattered requirements**
-  Dependencies are not explicit in code. The only way to know what datasets a script depends on is to read the entire script. We've learned this lesson many times with software dependencies, and know to explicitly require dependency-forming statements to be at the top of a code file. There's no reason this shouldn't apply to depending on datasets.
+  Dependencies are not explicit in code. The only way to know what datasets a script depends on is to read the entire script. We've learned this lesson many times with software dependencies, and know to explicitly require dependency-forming statements at the top of a code file. There's no reason this shouldn't apply to depending on datasets.
 * **inexpressive usage**
-  `qri.load_dataset` functions are is not expressive enough to capture all the uses for a dataset, building up patternas around loading pieces of a dataset inside special functions like `transform` is missing the point of thinking of datasets as _documents_.
+  `qri.load_dataset` functions are not expressive enough to capture all the uses for a dataset, building up patterns around loading pieces of a dataset inside special functions like `transform` is missing the point of thinking of datasets as _documents_.
 * **expanding adds to `qri` module, not dataset documents**
   Currently the `qri` module returns plain values from methods like `load_dataset_body`. If we wanted to add a function that, say, only selected specific parts of a dataset body, that function would be added to the `qri` module. This issue will only be exacerbated when we try to overlay access control onto datasets. It makes more sense to define all ways a dataset will be used at the point of import, and have Qri return a `dataset` document that is scoped to that use.
 
@@ -74,7 +74,9 @@ residents = load_dataset("b5/city_residents", anonymized=True)
 residents = load_dataset("b5/city_residents", forward_permissions=True)
 ```
 
-These are suggestions only. We need lots of time to think through how these options will work, this rfc only adds the assumption that those statements will be expressed as options on `load_dataset`. We can build on the already-present assumption that loaded datasets are read-only, making all options pertain to read access.
+These options are not giving additional permissions to scripts, as that would go against the no-need-to-audit goal, they are instead self-restricting what the loaded dataset may be used for. They exist for the benefit of the transform author, not for the security of the transform consumer.
+
+These are suggestions only. We need lots of time to think through how these options could work, this rfc only adds the assumption that those statements will be expressed as options on `load_dataset`. We can build on the already-present assumption that loaded datasets are read-only, making all options pertain to read access.
 
 We _do_ need to declare what the default `load_dataset` expression means in relation to permissions:
 
@@ -119,13 +121,16 @@ def transform(ds, ctx):
   ds.set_body([ds.get_meta('title') for ds in datasets])
 ```
 
-Statements that use scropts to compose import names, however, can and should work:
+This example is making use of a _privileged resource_ (the local qri node), which should be denied by default. For this assumption to hold, privileged resources must _only_ be available within special functions, an assumption we already enforce.
+
+Statements that use logic to compose import strings should also be denied:
 
 ```python
+# error: load_dataset must be called with a string value
 pop_years = [load_dataset("b5/population_%s" % year) for year in range(2011,2017)]
 ```
 
-The former example is making use of a _priveledged resource_ (the local qri node), while the latter is a convenience function for creating legal string names. For this assumption to hold, priveledged resources must _only_ be available within special functions, an assumption we already enforce.
+This convenience function for creating legal string names breaks static analysis tools, making it impossible to determine a script's dependencies without executing code.
 
 ### Name Resolution
 When the starlark execution environment encounters a `load_dataset` statement, it has to _resolve_ the name, connecting the string reference to a dataset object. This may or may not require network access, depending on if the user currently has all of the specified versions locally. All naming duties required by `load_dataset` will be offloaded to Qri's name resolution system, but a few interactions merit calling out here:
@@ -140,10 +145,10 @@ This interaction with network availability will need to be managed. If, for exam
 $ qri save --offline --file transform.star me/example
 ```
 
-Referencing any non-local dataset in `load_dataset` will raise a name resolution error. But if all depencies are locally satisfied, the transform should execute without error.
+Referencing any non-local dataset in `load_dataset` will raise a name resolution error. But if all depencies are locally satisfied, the transform should execute without error. If a dataset cannot be loaded, or doesn't exist anywhere, the script MUST exit. Providing a recovery mechanism would allow probing datasets to see whether they exist or not.
 
 ### Don't pin dependencies by default
-The default behaviour should be to **not pin dependencies**. We should add a new flag to `save` and `update` commands: `--pin-deps` that pins dependencies locally. The reason fro this choice relies on default settings in other parts of Qri. A "stock" installation of Qri defaults to storing datasets in an IPFS repository restricted to 10Gigs of space. In practice most datasets so far have been less than 100Mb in size, and most users coming to Qri either understand how to manually manage their IPFS storage, or are only using IPFS through Qri. These choices accumulate to lots of free space in the 10Gig repository that can go for some time before garbage collection is needed. If garbage collection _is_ required, the first thing that should go are transient dependencies required by previous transform scripts, which will be the case here. Future tools that perform graph analysis on versioned dependency trees can be introduced to add fine-grained pinning review & management. Did I mention that this work never stops?
+The default behaviour should be to **not pin dependencies**. We should add a new flag to `save` and `update` commands: `--pin-deps` that pins dependencies locally. The reason for this choice relies on default settings in other parts of Qri. A "stock" installation of Qri defaults to storing datasets in an IPFS repository restricted to 10Gigs of space. In practice most datasets so far have been less than 100Mb in size, and most users coming to Qri either understand how to manually manage their IPFS storage, or are only using IPFS through Qri. These choices accumulate to lots of free space in the 10Gig repository that can go for some time before garbage collection is needed. If garbage collection _is_ required, the first thing that should go are transient dependencies required by previous transform scripts, which will be the case here. Future tools that perform graph analysis on versioned dependency trees can be introduced to add fine-grained pinning review & management. Did I mention that this work never stops?
 
 ### Relative "me" references aren't allowed:
 Any valid dataset reference should work with one exeption: no "me" statements.
@@ -186,21 +191,7 @@ load_dataset("b5/nyc_for_hire_vehicles", "fhv")
 fhv.get_body()
 ```
 
-I attempted to code this up, it was both difficult to execute, and felt too "magical" in practice. My initial reason for specing this syntax were due to the future need to make alterations that will make the return value behave in different ways during execution. consider the following scenario:
-```python
-# only allow access to "residents" during the "transform" step. "fhv" will 
-# be equal to None during all other steps
-load_dataset("b5/nyc_for_hire_vehicles", "fhv", steps=["transform"])
-
-def download(ctx):
-  fhv.get_body() # error: cannot access 'fhv' during download step
-
-def transform(ds,ctx):
-  fhv.get_body() # this will work
-```
-
-I now realize the problem is not in how the variable is declared, it is that the value stored at `fhv` is _stateful_. How the dataset is named is an orthagonal problem. The return-value style wins out in my mind on account of reading more clearly.
-
+I attempted to code this up, it was both difficult to execute, and felt too "magical" in practice.
 
 ### alternate names
 We can also consider alternative names for `load_dataset`. To me the requirements are as follows:
@@ -222,12 +213,12 @@ One aspect not yet covered by this RFC is how to load previous versions of the d
 
 ```python
 prev = load_dataset("~1")
-``` 
+```
 
-This clearly needs more thought, I'm hoping to cover this in a subsequent RFC that helps refine & clarify the distinction between _names_ & _selection_.
+The current thinking is to _not_ do this because it's not safe to assume that "~1" is a dataset meant for public consumption. Loading historical entries clearly needs more thought, I'm hoping to cover this in a subsequent RFC that helps refine & clarify the distinction between _names_ & _selection_.
 
 ### Dataset object
-This RFC adds pressure to the api defined around dataset documents in starlark. We're on a collision course with a `dataframe-like api` that'll need to get worked out in a separate RFC. I think we can survive on the current model until a subsequent RFC can be written with extensive research dataframe-like APIs.
+This RFC adds pressure to the api defined around dataset documents in starlark. We're on a collision course with a `dataframe-like api` that'll need to get worked out in a separate RFC. I think we can survive on the current model until a subsequent RFC can be written with extensive research ondataframe-like APIs.
 
 ### Dynamic dependencies
 This RFC explicitly denies building dynamic dependencies by forcing `load_dataset` to be top-level calls. 
