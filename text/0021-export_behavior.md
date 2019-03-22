@@ -16,7 +16,7 @@ An <a href="https://github.com/qri-io/rfcs/blob/master/text/0014-export.md">earl
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-Export is a piece of functionality that will generate the version of a dataset which is external to qri storage, so that it can live instead on a local filesystem. The goal is to have a document defintion of the structured data that has been, up until now, represented only internally by qri. Here are some of the use cases that `export` is meant to handle:
+Export is a piece of functionality that will generate the version of a dataset which is external to qri storage, so that it can live instead on a local filesystem. The goal is to have a document definition of the structured data that has been, up until now, represented only internally by qri. Here are some of the use cases that `export` is meant to handle:
 
 * Getting a local binary copy of a dataset, such that it can be safetly deleted from qri, and later imported without any loss of fidelity or history.
 * Exporting an entire dataset with metadata and body to analyze in a custom script. A single file "json" or "yaml", for example.
@@ -85,7 +85,7 @@ In addition, the basename of the output path should be derived from the name of 
  
 Should be saved to "my_dataset_[formatted_timestamp_of_most_recent_commit].zip". This means exports of the same version of the dataset will have the same filename, while new versions will have different filenames.
  
-When the `export` command is completed, the command-line should print a success message that includes the filename of the exported result. This should be done whether the output filename is derived from the dataset name and timestmap, or if its specified using the `-o` flag.
+When the `export` command is completed, the command-line should print a success message that includes the filename of the exported result. This should be done whether the output filename is derived from the dataset name and timestamp, or if its specified using the `-o` flag.
 
 ## Transform and viz
 

@@ -210,7 +210,7 @@ load("geo.sky", "geo")
 p1 = geo.Point(-44.34,33)
 p2 = geo.Point(-44.34,32)
 
-# Euclidian Distance
+# Euclidean Distance
 p1.distance(p1,p2) 
 
 # Distance on the surface of a sphere with the same radius as Earth
