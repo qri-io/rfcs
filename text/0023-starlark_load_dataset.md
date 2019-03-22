@@ -13,7 +13,7 @@ This RFC assumes all datasets are public, and that names refer to a dataset the 
 # Motivation
 [motivation]: #motivation
 
-Qri's goal is to build an environment where datasets are as a first class citizen. Qri currently monitors any call to `qri.load_dataset` and records the loaded dataset as a dependency. This results in a complete dependency graph.
+Qri's goal is to build an environment where datasets are a first class citizen. Qri currently monitors any call to `qri.load_dataset` and records the loaded dataset as a dependency. This results in a complete dependency graph.
 
 There are (at least) three problems with this approach: 
 
