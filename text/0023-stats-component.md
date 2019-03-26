@@ -21,44 +21,138 @@ The stats component is one part in a push to get dataset creators to an interest
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-concepts to expand on:
-- example stats component
+Let's split this section in to three parts. 
+First we will talk about what a default stats component might looks like and what stats we want to generate. Then let's talk about future possibilities, namely what a default stats component might look like for high dimentional data and what custom stats might look like and what we need to do to get there.
 
-```
-Stats: [
+## Default Stats component:
+To start, Qri can create a default stats component on tabular (two dimentional) data. Because we want the cost of creating a stats component to be low, we only want to generate stats that can be calculated on a rolling basis.
+
+The different types of data that we can generate stats on are number (including integer and floating point), string, and boolean.
+
+We can generate different stats depending on the type of that column.
+
+Number:
+  valid - the number of cells in that column that contain valid numbers
+  error - the number of cells in that column that contain invalid numbers
+  missing - the number of cells in that column that do not contain data
+  min - the minimum number found
+  max - the maximum number found
+  avg - the average value
+
+String
+  valid - the number of cells in that column that contain valid strings
+  error - the number of cells in that column that contain invalid string
+  missing - the number of cells in that column that do not contain data 
+  minLength - the shortest length of a string in that column
+  maxLength - the longest length of a string in that column
+
+Boolean
+  valid - the number of cells in that column that contain valid boolean values
+  error - the number of cells in that column that contain invalid boolean values
+  missing - the number of cells in that column that do not contain data 
+  trueCount - the number of cells that contain a true value
+  falseCount - the number of cells that contain a false value
+
+The structure of the default stats component depends on the structure of the data itself. If each row of the dataset body is expressed as an array, the stats component will be an array of objects. If each row of the dataset body is expressed as an object, the stats component will be an object of objects. One important thing to note, we must have a structure with a schema that describes the title and the type in order to create stats.
+
+Let's look at two examples of a small dataset body, and the resulting stats object.
+
+```json
+// this is a small dataset body expressed as a 2D array. It is a list of 
+// classes in an elementary school. The columns are the class name (string),
+// the current number of students (number), and whether the class can accept 
+// more students
+[
+  ["1A", 20, false],
+  ["1B", 22, false],
+  ["1C", 17, true],
+  ["1D", 19, true]
+]
+
+// the resulting stats section would look like this:
+[
   {
-    "title":"",
-    "type":"number" // or decimal/integer? need to double check how this is stated in jsons schema
-    "count":,
-    "min":,
-    "max":,
-    "avg":,
-  },
-  {
-    "title":"",
+    "title":"class name",
     "type":"string",
-    "count":,
-    "unique":, // can't cause not rolling
-    "most_common":, // can't cause not rolling
-    "minLength",
-    "maxLength"
+    "count": 4,
+    "minLength": 2,
+    "maxLength": 2
   },
   {
-    "title":"",
+    "title":"students",
+    "type":"number",
+    "count": 4,
+    "min": 17,
+    "max": 22,
+    "avg": 19.5,    
+  },
+  {
+    "title":"can accept more students",
     "type":"boolean",
-    "count":,
-    "trueCount":,
-    "falseCount":,
+    "count": 4,
+    "trueCount": 2,
+    "falseCount": 2,
   }
 ]
 ```
-Can calculate stats on boolean, string, and numerical columns. 
-For each type, qri can calculate, on default, a number of stats. Our main qualifications for adding a stat to the qri default, are that it can be expressed with a small amount of memory and be calculated on a rolling basis.
+Note that the data we expressed as a 2D array, and so the stats component is presented as an array.
 
-There are few specific things we are looking for for each type. The main qualifications are that it not be a large piece of data to save, and something that can be calculated on a rolling basis.
+Let's look at this same example, but with the data presented as an array of objects:
 
-To start, we need to constrain the datasets onto which we calculate stats. For this first implimentation, we will only create default stats on two dimentional (tabular) data.
+```json
+[
+  {
+    "class_name":"1A",
+    "students":20, 
+    "can_accept_more":false
+  },
+  {
+    "class_name":"1B",
+    "students":22, 
+    "can_accept_more":false
+  },
+  {
+    "class_name":"1C",
+    "students":27, 
+    "can_accept_more":true
+  },
+  {
+    "class_name":"1D",
+    "students":19, 
+    "can_accept_more_students":true
+  }
+]
 
+// stats:
+{
+  "class_name": {
+    "title":"class name",
+    "type":"string",
+    "count": 4,
+    "minLength": 2,
+    "maxLength": 2
+  },
+  "students": {
+    "title":"students",
+    "type":"number",
+    "count": 4,
+    "min": 17,
+    "max": 22,
+    "avg": 19.5,    
+  },
+  "can_accept_more_students": {
+    "title":"can accept more students",
+    "type":"boolean",
+    "count": 4,
+    "trueCount": 2,
+    "falseCount": 2,
+  }
+}
+```
+
+In summary, qri can generate some basic stats on a dataset body, if the body is tabular. We also need a structure with a schema in order to understand what stats to be calculating.
+
+## high dimentional data
 Not only does 3 dimentinal (or higher) data have a less apparent structure, it is also diffcult to reason about the best way to display stats for 3 dimentional data.
 For example, with geojson:
 - multiple dimensions, how do you describe which section is being used
