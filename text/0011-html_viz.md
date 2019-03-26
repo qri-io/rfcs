@@ -103,10 +103,8 @@ In addition to the stock predefined functions the following should be loaded for
 
 | name        | description              |
 | ----------- | ------------------------ |
-| time.parse  | parse a timestamp string, returning a golang *time.Time struct |
-| time.format | convert the textual representation of the datetime into the specified format |
-| countwords  | count the number of words in a string |
-| index       | looks up the index(es) or key(s) of the data structure passed into it. |
+| timeParse   | parse a timestamp string, returning a golang *time.Time struct |
+| timeFormat  | convert the textual representation of the datetime into the specified format |
 | default     | Allows setting a default value that can be returned if a first value is not set. |
 
 
