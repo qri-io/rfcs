@@ -338,26 +338,12 @@ There maybe a few standards on which we can adopt default schemas, stats, and te
 
 ## Custom stats
 
+This is out of the scope of this current RFC, but Qri should implement a way for users to add their own custom stats during a transform. We should create a starlark module called `stats`, and a function on the dataset object `ds.set_stats`.
 
+The starlark module `stats`, should have a `defaultStats` function that would return the exact same default stats that would occur during dataset creation.
 
-We want the users to have abject flexibility to create stats, but the default should only be created under specific circumstances.
-- what are the default stats
-- explain why we are choosing those specific default stats.
-- talk about needed to assume very little but allow a lot
+Dataset creators should be well informed that when they create custom stats, the default template may not render a useful visualization. If you create custom stats, you should also create a custom template to match.
 
-<!-- Explain the proposal as if it was already included in the language and you were teaching it to a Qri _developer_. That generally means:
-
-- Introducing new named concepts.
-- Explaining the feature largely in terms of examples.
-- Explaining how Qri developer should *think* about the feature, and how it should impact the way they use Qri. It should explain the impact as concretely as possible.
-- If applicable, provide sample error messages, deprecation warnings, or migration guidance.
-- If applicable, describe the differences between teaching this to a Qri developer vs a Qri _user_.
-
-For implementation-oriented RFCs (e.g. for Qri codebase internals), this section should focus on how contributors should think about the change, and give examples of its concrete impact. For policy RFCs, this section should provide an example-driven introduction to the policy, and explain its impact in concrete terms. -->
-- out of the scope of this rfc, but explain a bit about the idea for custom stats, how they might be added to qri, and 
-- show potential starlark example of set_stats
-- how would someone create those stats?
-- set_stats and then actually add some custom things that we might want, ie, in an options or a config say each row add average, each row add median, for this specific row add median of text eg
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation\
@@ -377,10 +363,9 @@ The section should return to the examples given in the previous section, and exp
 # Drawbacks
 [drawbacks]: #drawbacks
 
-Why should we *not* do this?
-- we already have a meta that we can add arbitrary data too
-- we already have a schema that talks about the structure of the data, and is going to look really similar
-- potential dataset bloat?
+Adding a stats component would disrupt what has become a relatively settled dataset model. 
+
+Although the default stats component should only add a small amount of data to our dataset package, it is still adding extra kilobytes. Also, when custom stats are available, if a dataset creator doesn't think through the stats they are adding, they may actually add much more than a few kilobytes of glut.
 
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
@@ -388,6 +373,12 @@ Why should we *not* do this?
 - alternatives, use json schema somehow for stats... we are basically using json
 schema to describe the stats anyway. 
 - keep pushing the stats to a stats field in meta. However, since stats should be computer generated, this doesn't seem right. It's to easy right now to mess with the meta.
+
+If we do not add a stats component, we will run into issues as we move forward with fleshing out templates for visualizations. We do not want dataset creators to have to inject the entire dataset body into a template in order to render an interesting visualization. With a stats component, the user can do some analysis on the dataset, save it to the stats component, and inject the the statistical data it needs to display in a rendered viz. Using the stats component rather then the body, will save an order of magnatude of space, rendering, and loading time.
+
+We can add stats to the structure component. This would most make sense in place of or added onto the json schema. However, we definitely get a lot of wins by using json schema, so we really don't want to replace it. As for adding to what json schema already gives us, for tabular data, this is actually probably possible. However, we also want to allow custom stats and a way forward for stats on high dimentional data, this seems much more difficult. The problem of presenting stats on high dimentional data is difficult enough without having to also add the complexity of describing high dimentional data. Having the stats in a separate location feel better then adding it to structure.
+
+We already have a meta component that describes the dataset, we could potentially just add a `stats` section there, or just have dataset creators add stats as an arbitrary field each time they need them. However, the Meta component is very easy to mess with, and there are very few bounds on what you can add. Part of our guarentee with the Stats component, is that the Stats reflect the body, because they were generated from of that body. Adding to an arbitrary field in Meta does not give us that guarentee. 
 <!-- - Why is this design the best in the space of possible designs?
 - What other designs have been considered and what is the rationale for not choosing them?
 - What is the impact of not doing this? -->
@@ -396,7 +387,8 @@ schema to describe the stats anyway.
 [prior-art]: #prior-art
 - json schema
 - need to look at kaggle and other dataset creation tools to see what they use for default stats 
-- on kaggle => 
+Becaue this all relys on json schema, and because json schema's main function is to describe 
+Kaggle is a dataset project Kaggle calculates a number of stats we deem important but too expensive to start out with:
 for number => valid, mismatched, missing, the mean, standard deviation, and quantities for each percentile
 for string => valid, mismatched, missing, # of unique entries, most common entries (and %)
 date => valid, mismatched, missing, minimum, mean, maximum
