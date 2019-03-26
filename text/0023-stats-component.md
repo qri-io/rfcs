@@ -154,113 +154,191 @@ In summary, qri can generate some basic stats on a dataset body, if the body is 
 
 ## high dimentional data
 Not only does 3 dimentinal (or higher) data have a less apparent structure, it is also diffcult to reason about the best way to display stats for 3 dimentional data.
-For example, with geojson:
+The issue with high dimentional data, is there is no easy way to reason about the structure. With 2 dimentional data, if there are the same number of elements in each row, we know that the structure is consistent, so we have some assurance that when we calculate stats, the stats will make sense.
+However, with higher dimentional data, it is harder to make those guarentees. 
+
+However, if some data has a top level array and comes with a well defined schema, we then can at least know that the intention is for each row to have the same structured content. We can perhaps do stats on that data.
+
+One example of data that has a defined structure, and has a top level array is geojson data. Let's look at a small array of geojson data:
+```json
+
+```
 - multiple dimensions, how do you describe which section is being used
 - there is no guarentee that row the dataset has the same elements/patterns
 - perhaps we can colapse columns e.g. for a coordiate in geojson:
+
+```json
 [
-  {
-    "type": "Feature",
-    "geometry": {
-      "type": "Point",
-      "coordinates": [125.6, 10.1]
+    {
+      "type": "Feature",
+      "properties": {
+        "name":"Brooklyn"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -74.00,
+          40.63
+        ]
+      }
     },
-    "properties": {
-      "name": "Dinagat Islands"
-    }
-  },
-  {
-    "type": "Feature",
-    "geometry": {
-      "type": "Point",
-      "coordinates": [125.6, 10.1]
+    {
+      "type": "Feature",
+      "properties": {
+        "name":"Manhattan"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -74.00,
+          40.71
+        ]
+      }
     },
-    "properties": {
-      "name": "Dinagat Islands"
-    }
-  },
-  {
-    "type": "Feature",
-    "geometry": {
-      "type": "Point",
-      "coordinates": [125.6, 10.1]
+    {
+      "type": "Feature",
+      "properties": {
+        "name":"Queens"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.90,
+          40.71
+        ]
+      }
     },
-    "properties": {
-      "name": "Dinagat Islands"
+    {
+      "type": "Feature",
+      "properties": {
+        "name":"Staten Island"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -74.11,
+          40.62
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name":"Bronx" 
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.92,
+          40.82
+        ]
+      }
     }
-  },
-]
-stats: [
+  ]
+
+// the json schema:
+{
+  "definitions": {},
+  "type": "array",
+  "items": {
+    "required": [
+      "type",
+      "properties",
+      "geometry"
+    ],
+    "properties": {
+      "type": {
+        "type": "string",
+      },
+      "properties": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "default": "",
+            "examples": [
+              "Brooklyn"
+            ]
+          }
+        }
+      },
+      "geometry": {
+        "type": "object",
+        "required": [
+          "type",
+          "coordinates"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "examples": [
+              "Point"
+            ],
+          },
+          "coordinates": {
+            "type": "tuple",
+            "items": [
+              {"type": "number", "title":"x"},
+              {"type": "number", "title":"y"}
+            ],
+            "additionalItems": false
+          }
+        }
+      }
+    }
+  }
+}
+// we can use this schema to infer the shape of each row, and determine a stats object
+// based on that:
+[
   {
     "title":"type",
     "type":"string",
-    "count": 3,
-    "minLength: 7,
+    "count": 5,
+    "minLength": 7,
     "maxLength": 7
   },
   {
     "title":"geometry.type",
     "type":"string",
-    "count": 3,
-    "minLength: 5,
+    "count": 5,
+    "minLength": 5,
     "maxLength": 5
   },
   {
     "title":"geometry.coordinates.x",
     "type":"float",
-    "count": 3,
-    "min: 125.6,
-    "max": 125.6,
-    "avg": 125.6
+    "count": 5,
+    "min": -74.11,
+    "max": -73.90,
+    "avg": -73.99
   },
   {
     "title":"geometry.coordinates.y",
     "type":"float",
-    "count": 3,
-    "min: 10.1,
-    "max": 10.1,
-    "avg": 10.1
+    "count": 5,
+    "min": 40.62,
+    "max": 40.82,
+    "avg": 40.70
   },
   {
     "title":"properties.name",
     "type":"string",
-    "count": 3,
-    "minLength: 15,
-    "maxLength": 15
+    "count": 5,
+    "minLength": 5,
+    "maxLength": 13
   }
-]
+] 
+```
 
-Do stats have to be an array, or should they be a dictionary, with the keys as the column names?
-{
-  "type": {
-    "type":"string",
-    "count": 3,
-    "minLength: 7,
-    "maxLength": 7
-  },
-  "geometry.type": {
-    "type":"string",
-    "count": 3,
-    "minLength: 5,
-    "maxLength": 5
-  },
-  "geometry.coordinates.y": {
-    "type":"float",
-    "count": 3,
-    "min: 10.1,
-    "max": 10.1,
-    "avg": 10.1
-  },
-  "properties.name": {
-    "type":"string",
-    "count": 3,
-    "minLength: 15,
-    "maxLength": 15
-  }
-}
+There maybe a few standards on which we can adopt default schemas, stats, and templates, that would play well together on dataset creation. GeoJSON would certainly be one candidate.
 
-This could potentially no preserve order, which may be important. If we present as an array, order is maintained.
-Need specific circumstances and formatting for default stats. Once a stats component is present, we want to be able to assume a lot about it, especially for use in our default template. If custom stats are added, we need to make it clear to the dataset creator that they should create a custom template as well.
+## Custom stats
+
+
 
 We want the users to have abject flexibility to create stats, but the default should only be created under specific circumstances.
 - what are the default stats
