@@ -160,12 +160,6 @@ However, with higher dimentional data, it is harder to make those guarentees.
 However, if some data has a top level array and comes with a well defined schema, we then can at least know that the intention is for each row to have the same structured content. We can perhaps do stats on that data.
 
 One example of data that has a defined structure, and has a top level array is geojson data. Let's look at a small array of geojson data:
-```json
-
-```
-- multiple dimensions, how do you describe which section is being used
-- there is no guarentee that row the dataset has the same elements/patterns
-- perhaps we can colapse columns e.g. for a coordiate in geojson:
 
 ```json
 [
@@ -332,6 +326,7 @@ One example of data that has a defined structure, and has a top level array is g
     "maxLength": 13
   }
 ] 
+
 ```
 
 There maybe a few standards on which we can adopt default schemas, stats, and templates, that would play well together on dataset creation. GeoJSON would certainly be one candidate.
@@ -360,6 +355,25 @@ Dataset creators should be well informed that when they create custom stats, the
 
 The section should return to the examples given in the previous section, and explain more fully how the detailed proposal makes those examples work. -->
 
+*add calculations of best case and worst case senarios*
+
+
+## Stats component size calculations
+
+Calculations on the size of a stats component are based on worst case senario. In our worse case senario each stat would be a boolean stat (the default with the largest ratio between stat size and data size), with a 200 character title, and a 19 digit number for each of count, trueCount, and falseCount. *note: this is disengenuous, because the count trueCount and falseCount max out at the number of rows, but because we are looking at the worst case senario let's keep it as high as possible*
+
+A single stat in the worst senario is around 342 bytes.
+
+In contrast, a dataset with one column and one row, whose only cell contains a a boolean, only takes up 8 bytes. If this same dataset, with one column, would need around 40 rows to even equal the size of the stats component. 
+
+We know, however, that the size of the Stat component will only increase if we add another column to the dataset. In fact, it increases linearly, proportional to the number of columns. So if there are 10 columns, then the worst case stats component will be 3.4 kilobytes. Any added rows to the dataset do not add to the size of the Stats component. If the number of columns remains the same, the stats component will change very little. And, better yet, as the number of rows increase in a dataset, the Stats component becomes more and more valuable.
+
+Our worst case scenario dataset would have a huge number of columns, and only one row. While a dataset structure like that is possible, it is unlikely. Far more likely are datasets with 10-30 columns, and over 50 rows. 
+
+Let's go to an extreme. Let's say we have a 400Mb dataset, with 400 columns. That dataset's Stats component is going to be around 137kbs. The stats would be around 3000 times smaller then the actual data itself. Even if we had 4000 columns, and the Stats component was 1.4MBs, that's still 235 times smaller then the data itself. And it gets more valuable the fewer the number of columns.
+
+Let's take a typical example. A dataset that is around 200Mbs with about 10 columns. The stats component would be about 3.4kbs, making the stats component 58823 times smaller than the data itself. In our typical and extremely large dataset examples, the stats component is of a negligable size.
+
 # Drawbacks
 [drawbacks]: #drawbacks
 
@@ -369,30 +383,25 @@ Although the default stats component should only add a small amount of data to o
 
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
-- the impact of not doing this => huge template bloat. So sliver of added bytes to the dataset, and template can get slimmer, cause you don't have to do calculations in the template.
-- alternatives, use json schema somehow for stats... we are basically using json
-schema to describe the stats anyway. 
-- keep pushing the stats to a stats field in meta. However, since stats should be computer generated, this doesn't seem right. It's to easy right now to mess with the meta.
-
 If we do not add a stats component, we will run into issues as we move forward with fleshing out templates for visualizations. We do not want dataset creators to have to inject the entire dataset body into a template in order to render an interesting visualization. With a stats component, the user can do some analysis on the dataset, save it to the stats component, and inject the the statistical data it needs to display in a rendered viz. Using the stats component rather then the body, will save an order of magnatude of space, rendering, and loading time.
 
 We can add stats to the structure component. This would most make sense in place of or added onto the json schema. However, we definitely get a lot of wins by using json schema, so we really don't want to replace it. As for adding to what json schema already gives us, for tabular data, this is actually probably possible. However, we also want to allow custom stats and a way forward for stats on high dimentional data, this seems much more difficult. The problem of presenting stats on high dimentional data is difficult enough without having to also add the complexity of describing high dimentional data. Having the stats in a separate location feel better then adding it to structure.
 
 We already have a meta component that describes the dataset, we could potentially just add a `stats` section there, or just have dataset creators add stats as an arbitrary field each time they need them. However, the Meta component is very easy to mess with, and there are very few bounds on what you can add. Part of our guarentee with the Stats component, is that the Stats reflect the body, because they were generated from of that body. Adding to an arbitrary field in Meta does not give us that guarentee. 
-<!-- - Why is this design the best in the space of possible designs?
-- What other designs have been considered and what is the rationale for not choosing them?
-- What is the impact of not doing this? -->
+
 
 # Prior art
 [prior-art]: #prior-art
-- json schema
-- need to look at kaggle and other dataset creation tools to see what they use for default stats 
-Becaue this all relys on json schema, and because json schema's main function is to describe 
-Kaggle is a dataset project Kaggle calculates a number of stats we deem important but too expensive to start out with:
+
+Since stats relies on json schema, and because json schema's main function is to describe data structures, we looked at what we could copy from json schema.
+
+Kaggle is a dataset project that shows some basic stats for each column of data. Our proposed list of stats and their list of stats has alot of overlap. Theirs also includes a few that we deemed too computationally heavy to being with:
 for number => valid, mismatched, missing, the mean, standard deviation, and quantities for each percentile
 for string => valid, mismatched, missing, # of unique entries, most common entries (and %)
 date => valid, mismatched, missing, minimum, mean, maximum
 boolean => valid, mismatched, missing, unique, most common
+
+
 <!-- Discuss prior art, both the good and the bad, in relation to this proposal.
 A few examples of what this can include are:
 
@@ -409,7 +418,8 @@ Please also take into consideration that Qri sometimes intentionally diverges fr
 
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
-- where we go from here re: stats component and custom stats.
+What does representing high dimentional data look like?
+What are the exact specifications of the starlark `stats` module, and dataset object `ds.set_stats` function?
 <!-- - What parts of the design do you expect to resolve through the RFC process before this gets merged?
 - What parts of the design do you expect to resolve through the implementation of this feature before stabilization?
 - What related issues do you consider out of scope for this RFC that could be addressed in the future independently of the solution that comes out of this RFC? -->
