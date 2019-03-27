@@ -6,15 +6,20 @@
 # Summary
 [summary]: #summary
 
-Introducing a new component to our dataset model: the Stats component. The Stats component contains some statistical analysis on the dataset body. Qri can create a default stats component, if the dataset body has certain qualities (right now, if it is tabular). This rfc posits the first default stats that should be added to the component, the "standard" way the stats component should be shaped (including any keywords that should be reserved), and finally, it maps out a future in which a dataset creator can add their own custom stats to the stats component.
+Define "Stats", an optional dataset component that contains statistical metadata about the body of a dataset.
+
 
 # Motivation
 [motivation]: #motivation
 
-<!-- Why are we doing this? What use cases does it support? What is the expected outcome? -->
-Qri is missing statistical metadata! We have descriptive metadata (stored in the Meta component), structural metadata (Structure component), and administrative metadata (Commit component), but no statisicial metadata. This rfc proposes the the path forward to statistical metadata stored in the Stats component. 
+Qri is missing statistical metadata! Of the [five common types](https://en.wikipedia.org/wiki/Metadata) of metadata, Qri's dataset definition already has four:
 
-Creating and storing a Stats component will take a sliver of the computing power it takes to create and store the dataset itself (as this rfc will prove). For that small cost, the stats component will make the dataset creators life easier. It will be a quick way to learn about the full dataset body, and it will allow us to have visualizations without needing to inject the full body into the html. That not only reduces loading time for templates, but will make our dataset packages slimmer.
+descriptive metadata (stored in the Meta component)
+structural & reference metadata (Structure component)
+administrative metadata (Commit component)
+This rfc proposes adding a new component to dataset for storing statistical metadata.
+
+Because Qri strives to be a generic dataset management tool, it's difficult to infer a set of meaningful statistics without introducing subject-matter specific information. Instead we focus on conventions for structuring statistical metadata, providing users flexibility to define stats metadata that suit their needs. We only default to inferring stats in common scenarios that introduce minimal cost overhead, like tabular data.
 
 The stats component is one part in a push to get dataset creators to an interesting, publishable insight quicker. The ideal path, using the default Stats generator and the default template would be: the creator adds a dataset with a tabular body. On dataset creation, Qri calculates a stats component, and uses this stats component to render a visualization from the default template. The creator can check out that template (or the stats component itself), to see if there are any interesting insights. The creator may choose to publish this dataset then and there, exposing the dataset and the rendered findings to the world, or create a new version of the dataset exploring the findings further.
 
@@ -29,10 +34,10 @@ To start, Qri can create a default stats component on tabular (two dimentional) 
 
 The different types of data that we can generate stats on are number (including integer and floating point), string, and boolean.
 
-We can generate different stats depending on the type of that column.
+We can generate different stats depending on the type of that column. Note, "valid" here means the result of running the given jsonschema structure against this cell of data.
 
 Number:
-  valid - the number of cells in that column that contain valid numbers
+  valid - the number of cells in that column that contain valid numbers. Validity is based on the the json 
   error - the number of cells in that column that contain invalid numbers
   missing - the number of cells in that column that do not contain data
   min - the minimum number found
@@ -74,14 +79,18 @@ Let's look at two examples of a small dataset body, and the resulting stats obje
   {
     "title":"class name",
     "type":"string",
-    "count": 4,
+    "valid": 4,
+    "error": 0,
+    "missing": 0,
     "minLength": 2,
     "maxLength": 2
   },
   {
     "title":"students",
     "type":"number",
-    "count": 4,
+    "valid": 4,
+    "error": 0,
+    "missing": 0,
     "min": 17,
     "max": 22,
     "avg": 19.5,    
@@ -89,7 +98,9 @@ Let's look at two examples of a small dataset body, and the resulting stats obje
   {
     "title":"can accept more students",
     "type":"boolean",
-    "count": 4,
+    "valid": 4,
+    "error": 4,
+    "missing": 4,
     "trueCount": 2,
     "falseCount": 2,
   }
@@ -128,14 +139,18 @@ Let's look at this same example, but with the data presented as an array of obje
   "class_name": {
     "title":"class name",
     "type":"string",
-    "count": 4,
+    "valid": 4,
+    "error": 0,
+    "missing": 0,
     "minLength": 2,
     "maxLength": 2
   },
   "students": {
     "title":"students",
     "type":"number",
-    "count": 4,
+    "valid": 4,
+    "error": 0,
+    "missing": 0,
     "min": 17,
     "max": 22,
     "avg": 19.5,    
@@ -143,7 +158,9 @@ Let's look at this same example, but with the data presented as an array of obje
   "can_accept_more_students": {
     "title":"can accept more students",
     "type":"boolean",
-    "count": 4,
+    "valid": 4,
+    "error": 0,
+    "missing": 0,
     "trueCount": 2,
     "falseCount": 2,
   }
@@ -153,13 +170,8 @@ Let's look at this same example, but with the data presented as an array of obje
 In summary, qri can generate some basic stats on a dataset body, if the body is tabular. We also need a structure with a schema in order to understand what stats to be calculating.
 
 ## high dimentional data
-Not only does 3 dimentinal (or higher) data have a less apparent structure, it is also diffcult to reason about the best way to display stats for 3 dimentional data.
-The issue with high dimentional data, is there is no easy way to reason about the structure. With 2 dimentional data, if there are the same number of elements in each row, we know that the structure is consistent, so we have some assurance that when we calculate stats, the stats will make sense.
-However, with higher dimentional data, it is harder to make those guarentees. 
 
-However, if some data has a top level array and comes with a well defined schema, we then can at least know that the intention is for each row to have the same structured content. We can perhaps do stats on that data.
-
-One example of data that has a defined structure, and has a top level array is geojson data. Let's look at a small array of geojson data:
+Calculating statistics on high dimensional data is out of scope for this RFC. however we do provide a way to arrange statistical metadata into hierarchies by nesting stats object with a key: stats. Given a sample of high-dimensional data:
 
 ```json
 [
@@ -188,149 +200,38 @@ One example of data that has a defined structure, and has a top level array is g
           40.71
         ]
       }
-    },
+    }
+  ]
+```
+Here's an example of "stats that contain stats"
+```json
+{
+  // other dataset components ...
+  "stats":  [
+    { "title": "type", "type" : "string" /* same as 2D string stat */ },
     {
-      "type": "Feature",
-      "properties": {
-        "name":"Queens"
-      },
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -73.90,
-          40.71
-        ]
-      }
-    },
-    {
-      "type": "Feature",
-      "properties": {
-        "name":"Staten Island"
-      },
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -74.11,
-          40.62
-        ]
-      }
-    },
-    {
-      "type": "Feature",
-      "properties": {
-        "name":"Bronx" 
-      },
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -73.92,
-          40.82
-        ]
+      "title": "geometry",
+      "type" : "object",
+      "error" : 0,
+      "valid" : 2,
+      "missing" : 0, 
+      "stats": {
+        "geometry": { 
+          "type":"string", /* same as 2D string stat */
+          "coordinates": {
+             "type" : "geopoint",
+             "avg" : [-74.00, 41.00]
+          }
+        }
       }
     }
   ]
-
-// the json schema:
-{
-  "definitions": {},
-  "type": "array",
-  "items": {
-    "required": [
-      "type",
-      "properties",
-      "geometry"
-    ],
-    "properties": {
-      "type": {
-        "type": "string",
-      },
-      "properties": {
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "properties": {
-          "name": {
-            "type": "string",
-            "default": "",
-            "examples": [
-              "Brooklyn"
-            ]
-          }
-        }
-      },
-      "geometry": {
-        "type": "object",
-        "required": [
-          "type",
-          "coordinates"
-        ],
-        "properties": {
-          "type": {
-            "type": "string",
-            "examples": [
-              "Point"
-            ],
-          },
-          "coordinates": {
-            "type": "tuple",
-            "items": [
-              {"type": "number", "title":"x"},
-              {"type": "number", "title":"y"}
-            ],
-            "additionalItems": false
-          }
-        }
-      }
-    }
-  }
 }
-// we can use this schema to infer the shape of each row, and determine a stats object
-// based on that:
-[
-  {
-    "title":"type",
-    "type":"string",
-    "count": 5,
-    "minLength": 7,
-    "maxLength": 7
-  },
-  {
-    "title":"geometry.type",
-    "type":"string",
-    "count": 5,
-    "minLength": 5,
-    "maxLength": 5
-  },
-  {
-    "title":"geometry.coordinates.x",
-    "type":"float",
-    "count": 5,
-    "min": -74.11,
-    "max": -73.90,
-    "avg": -73.99
-  },
-  {
-    "title":"geometry.coordinates.y",
-    "type":"float",
-    "count": 5,
-    "min": 40.62,
-    "max": 40.82,
-    "avg": 40.70
-  },
-  {
-    "title":"properties.name",
-    "type":"string",
-    "count": 5,
-    "minLength": 5,
-    "maxLength": 13
-  }
-] 
+
+
+What's important to note here is stats is a recursive data structure that uses the keyword "stats" to build up statistical hierarchies. The actual calculation of these statistics is out of scope, but their presentation can be validated, mainly by reserving the stats keyword within a stats object.
 
 ```
-
-There maybe a few standards on which we can adopt default schemas, stats, and templates, that would play well together on dataset creation. GeoJSON would certainly be one candidate.
-
 ## Custom stats
 
 This is out of the scope of this current RFC, but Qri should implement a way for users to add their own custom stats during a transform. We should create a starlark module called `stats`, and a function on the dataset object `ds.set_stats`.
@@ -346,17 +247,6 @@ Dataset creators should be well informed that when they create custom stats, the
 - implimented at the dsio level
 - adding a section to Dataset
 - basically walking through what b5 has already added
-
-<!-- This is the technical portion of the RFC. Explain the design in sufficient detail that:
-
-- Its interaction with other features is clear.
-- It is reasonably clear how the feature would be implemented.
-- Corner cases are dissected by example.
-
-The section should return to the examples given in the previous section, and explain more fully how the detailed proposal makes those examples work. -->
-
-*add calculations of best case and worst case senarios*
-
 
 ## Stats component size calculations
 
@@ -402,24 +292,7 @@ date => valid, mismatched, missing, minimum, mean, maximum
 boolean => valid, mismatched, missing, unique, most common
 
 
-<!-- Discuss prior art, both the good and the bad, in relation to this proposal.
-A few examples of what this can include are:
-
-- Does this feature exist in other places and what experience have their community had?
-- For community proposals: Is this done by some other community and what were their experiences with it?
-- For other teams: What lessons can we learn from what other communities have done here?
-- Papers: Are there any published papers or great posts that discuss this? If you have some relevant papers to refer to, this can serve as a more detailed theoretical background.
-
-This section is intended to encourage you as an author to think about the lessons from other projects, provide readers of your RFC with a fuller picture.
-If there is no prior art, that is fine - your ideas are interesting to us whether they are brand new or if it is an adaptation from other languages.
-
-Note that while precedent set by other projects is some motivation, it does not on its own motivate an RFC.
-Please also take into consideration that Qri sometimes intentionally diverges from other projects. -->
-
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
 What does representing high dimentional data look like?
 What are the exact specifications of the starlark `stats` module, and dataset object `ds.set_stats` function?
-<!-- - What parts of the design do you expect to resolve through the RFC process before this gets merged?
-- What parts of the design do you expect to resolve through the implementation of this feature before stabilization?
-- What related issues do you consider out of scope for this RFC that could be addressed in the future independently of the solution that comes out of this RFC? -->
