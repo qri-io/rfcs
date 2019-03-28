@@ -27,7 +27,7 @@ Qri has a syntax-agnostic `viz` component that encapsulates the details required
 A command will be added to both Qri's HTTP API ('API' for short) & command-line interface (CLI) called `render`, which adds the capicty to execute HTML templates against datasets. When called with a specified dataset `qri render` will load the dataset, assume the viz syntax is HTML, and use a default template to write an HTML representation of a dataset to `stdout` on the CLI, or the HTTP response body on the API:
 `qri render me/example_dataset`
 
-The default template and output path can be overridden with the `--template` and `--output` flags respectively. the output is on the CLI only:
+The default template and output path can be overridden with the `--template` and `--output` flags respectively. The output is on the CLI only:
 `qri render --template template.html --output rendered.html me/example_dataset`
 
 The default template must be carefully composed to balance the size of the resulting HTML file in bytes against readability & utility of the resulting visualization. It should also include a well-constructed citation footer that details the components of a dataset in a concise, unobtrusive manner that invites users to audit the veracity of the dataset in question. These defaults should encourage easy reading and invite verification on the part of the reader.
@@ -93,10 +93,12 @@ Having default empty pointers prevents unnecessary `if` clauses, allowing a skip
 
 ### Template functions
 
-Top level functions should be loaded into the template `funcs` space to make rendering templates easier. The go html template package comes with [predefined functions](https://golang.org/pkg/text/template/#hdr-Functions), all of which are included in this RFC. An example prints the length of the body:
+Top level functions should be loaded into the template `funcs` space to make rendering templates easier. The go html template package comes with [predefined functions](https://golang.org/pkg/text/template/#hdr-Functions). Because our implementation builds the html/template package, this RFC introduces all of these functions into our template engine. I think this is totally fine, might be a pain if someone needs to write a non-go `Render` implementation, but at least the .
+
+An example that uses a default function prints the length of the body:
 
 ```html
-<h3> The Body has {{ len ds.get_body }} elements </h3>
+<h3> The Body has {{ len getBody }} elements </h3>
 ```
 
 In addition to the stock predefined functions the following should be loaded for all templates to make templating a little easier:
@@ -105,35 +107,38 @@ In addition to the stock predefined functions the following should be loaded for
 | ----------- | ------------------------ |
 | timeParse   | parse a timestamp string, returning a golang *time.Time struct |
 | timeFormat  | convert the textual representation of the datetime into the specified format |
-| default     | Allows setting a default value that can be returned if a first value is not set. |
+| default     | allows setting a default value that can be returned if a first value is not set. |
+| title       | give the title of a dataset |
+| getBody     | load the full dataset body |
+| filesize    | convert byte count to kb/mb/etc string |
 
 
 #### future dataset document API
 
 We have reserved future work for a "dataset API" that will expand the default capabilities of a dataset document to include convenience functions for doing things like loading named columns or sampling rows from the body. We've intentionally left this API undefined thus far to understand how it will work in different contexts. One such context is this template API.
 
-The one exception to this is exposing body data through a function on `ds`: `ds.get_body`. This is because there's a _very_ high chance we'll want to export `ds.body` as an object with methods in the future. If we simply load the entire body & drop it into `ds.body`, adding methods to `ds.body` will require breaking the document API.
+The one exception to this is exposing body data through a global function: `getBody`. This is because there's a _very_ high chance we'll want to export `ds.body` as an object with methods in the future. If we simply load the entire body & drop it into `ds.body`, adding methods to `ds.body` will require breaking the document API.
 
 ### The default template
 
-Our standard template should actually be a collection of pre-defined partials, looking something like this:
+Our standard template should be a collection of pre-defined blocks which are also available to user-provided templates. An example default template would look something like this:
 
 ```html
 <!DOCTYPE html>
 <html>
   <head>
-  {{ partial "stylesheet" }}
+  {{ block "stylesheet" . }}{{ end }}
   </head>
   <body>
-  {{ partial "header" ds }}
-  {{ partial "summary" ds }}
-  {{ partial "stats" ds }}
-  {{ partial "citations" ds }}
+  {{ block "header" ds . }}{{ end }}
+  {{ block "summary" ds . }}{{ end }}
+  {{ block "stats" ds . }}{{ end }}
+  {{ block "citations" ds . }}{{ end }}
   </body>
 </html>
 ```
 
-Users can then swap in these predefined partials to make partially-custom templates a thing, and ease the transition to fully-custom visualizations through progressive customization. The predefined partials are as follows:
+Users can then swap in these predefined blocks to make pseudo-custom templates a thing, and ease the transition to fully-custom visualizations through progressive customization. The pre-defined blocks are as follows:
 
 | name       | purpose |
 | ---------- | ------- |
@@ -174,4 +179,4 @@ there are more common templating styles that may make more sense. [Mustache](htt
 It's unclear if this RFC is specific enough to make templates created in this context & executed in go-qri function in another language. Future work should scope _down_ the allowed syntax, with an eye toward portability.
 
 ### Dataset API
-We need to put time into the dataset API, but it's also unclear weather the template engine should have full parity with that forthcoming API. Template execution is supposed to be limited, and smart decisions will need to be made to keep users from writing too much business logic into their templates.
+We need to put time into the dataset API, but it's also unclear whether the template engine should have full parity with that forthcoming API. Template execution is supposed to be limited, and smart decisions will need to be made to keep users from writing too much business logic into their templates.
