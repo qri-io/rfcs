@@ -24,7 +24,7 @@ Qri has a syntax-agnostic `viz` component that encapsulates the details required
 
 ### `qri render` & default template
 
-A command will be added to both Qri's HTTP API ('API' for short) & command-line interface (CLI) called `render`, which adds the capicty to execute HTML templates against datasets. When called with a specified dataset `qri render` will load the dataset, assume the viz syntax is HTML, and use a default template to write an HTML representation of a dataset to `stdout` on the CLI, or the HTTP response body on the API:
+A command will be added to both Qri's HTTP API ('API' for short) & command-line interface (CLI) called `render`, which adds the capacity to execute HTML templates against datasets. When called with a specified dataset `qri render` will load the dataset, assume the viz syntax is HTML, and use a default template to write an HTML representation of a dataset to `stdout` on the CLI, or the HTTP response body on the API:
 `qri render me/example_dataset`
 
 The default template and output path can be overridden with the `--template` and `--output` flags respectively. The output is on the CLI only:
@@ -45,7 +45,7 @@ Users can _override_ the default template by supplying their own custom viz temp
 name: example_dataset
 # additional fields elided ...
 viz:
-  syntax: html
+  format: html
   scriptPath: template.html
 ```
 
@@ -70,10 +70,11 @@ The template implementation will use the [go language html template package](htt
 
 #### Dataset is exposed as `ds`
 
-HTML template should expose a dataset document at `ds`. By exposing the document as `ds`, it matches our for referring to a dataset in starlark., and allows access to all defined parts of a dataset. ds should use _lowercase_ fields for component accessors. eg:
+HTML template should expose a dataset document at `ds`. Exposing the dataset document as `ds`  matches our conventions for referring to a dataset in starlark, and allows access to all defined parts of a dataset. ds should use _lower camel case_ fields for component accessors. eg:
 
 ```html
 {{ ds.meta.title }}
+{{ ds.transform.scriptPath }}
 ```
 
 Undefined components should be defined as empty struct pointers if null. For example a dataset _without_ a transform the following template should print nothing:
@@ -93,7 +94,7 @@ Having default empty pointers prevents unnecessary `if` clauses, allowing a skip
 
 ### Template functions
 
-Top level functions should be loaded into the template `funcs` space to make rendering templates easier. The go html template package comes with [predefined functions](https://golang.org/pkg/text/template/#hdr-Functions). Because our implementation builds the html/template package, this RFC introduces all of these functions into our template engine. I think this is totally fine, might be a pain if someone needs to write a non-go `Render` implementation, but at least the .
+Top level functions should be loaded into the template `funcs` space to make rendering templates easier. The go html template package comes with [predefined functions](https://golang.org/pkg/text/template/#hdr-Functions). Because our implementation builds on the html/template package, this RFC introduces all of these functions into our template engine. I think this is totally fine, might be a pain if someone needs to write a non-go `Render` implementation, but at least the universe of available template functions is known.
 
 An example that uses a default function prints the length of the body:
 
