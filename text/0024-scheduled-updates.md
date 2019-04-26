@@ -6,7 +6,7 @@
 # Summary
 [summary]: #summary
 
-Cron generates new dataset verions with a damonized service that schedules & executes updates. Using cron, qri can keep data up to date on behalf of a user, and provide notifications of significant changes to datasets.
+Cron generates new dataset versions with a daemonized service that schedules & executes updates. Using cron, qri can keep data up to date on behalf of a user, and provide notifications of significant changes to datasets.
 
 The goals of this RFC are twofold:
 * define `qri cron`, a service for automating dataset updates
@@ -19,7 +19,7 @@ As of this writing, all of my datasets are stale. They haven't been updated beca
 
 To keep datasets fresh, qri needs to automate the update process.  By _automate_ I mean: execute dataset updates as a background process, registered with the local operating system, according to some schedule I can specify. My computer should do the work of keeping datasets up to date for me, and should show me a log of what's been done for me, calling attention to significant changes.
 
-The magnitude of this shift to automation is noticeable. cron is _doing work for me_. It takes the process of dataset updating out of the categroy of chores, and opens up the possibliity that Qri can surprise me with new insights. 
+The magnitude of this shift to automation is noticeable. cron is _doing work for me_. It takes the process of dataset updating out of the category of chores, and opens up the possibliity that Qri can surprise me with new insights. 
 
 Adding cron starts to transition qri into territory best described as a _fog service_: a decentralized network of machines automatically producing local resources for a user that can aggregate to a broader network. Over time I'm hoping we can do more and more things under this "fog service" paradigm.
 
@@ -131,7 +131,7 @@ $ qri cron list
 [reference-level-explanation]: #reference-level-explanation
 
 ### OS Support
-`qri cron start` registers a deamonized service with the host Operatring System. We should prioritize Platform support in the following order:
+`qri cron start` registers a deamonized service with the host Operating System. We should prioritize Platform support in the following order:
 1. darwin
 2. unix/linux
 3. windows
