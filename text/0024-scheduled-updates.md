@@ -43,7 +43,7 @@ updates every 2 days
 next update: Tues. April 11, 11:30:00
 
 WARNING: qri update is not currently running. start with:
-$ qri update start
+$ qri update service start
 to start the qri update service. until then datasets will not auto-update.
 ```
 
@@ -90,9 +90,9 @@ The conventions for `list` should follow all other "list command conventions" fo
 
 We can start the qri update service like this:
 ```
-$ qri update start
+$ qri update service start
 cron update service started. stop it with:
-$ qri update stop
+$ qri update service stop
 ```
 
 If the current operating system doesn't yet support a daemonized service, the deamon should start in-process and show a warning message explaining to run this command with some equivalent of `nohup`. We should work to make as few people as possible see that message. As shown in the dialog, the update daemon must be stoppable with `qri update stop`.
