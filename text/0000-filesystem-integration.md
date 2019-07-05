@@ -60,7 +60,13 @@ Notes:
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-- Something about the invisible `.qri-ref` file that links the current directory to the central qri store
+When a filesystem folder is linked to a qri dataset, we create a file `.qri-ref` in that directory. This file contains a full path to the qri dataset (peername, dataset name, profile id, network, version hash). Every command that normally allows for `use` refs, will check for the presence of this file, and if found, will use that dataset reference contained within to pass along to the command's arguments.
+
+Running `diff` would compare the working directory against the head version of the dataset, using the existing diff lib functionality.
+
+Running `status` would compare the same, but only as a binary yes/no "are they the same?" comparison, to display if the working directory is dirty or clean.
+
+Running `save` would save using the dataset.yaml and body.csv in the working directory as file parameters.
 
 # Drawbacks
 [drawbacks]: #drawbacks
