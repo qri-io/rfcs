@@ -11,7 +11,7 @@ This feature adds a "live link" between a qri dataset in the user's IPFS repo an
 # Motivation
 [motivation]: #motivation
 
-The motivation for this feature is to provide a more tangible connection between the qri versioning/publishing ecosystem and the file-based data that data practitioners are used to working with. Since all of the information in a qri dataset maps to files, we should just make those files exist automatically when a qri dataset is "added" to the user's local machine.  Likewise, we should watch for changes to those files, and ensure that they are all in a valid state before allowing the user to commit changes to a qri dataset.
+The motivation for this feature is to provide a more tangible connection between the qri versioning/publishing ecosystem and the file-based data that data practitioners are used to working with. Since all of the user-modifiable information in a qri dataset can map to files, we should just make those files exist on the filesystem.  Likewise, we should watch for changes to those files, and ensure that they are all in a valid state before allowing the user to commit changes to a qri dataset.
 
 *This will significantly lower the barrier to entry for new users to qri, especially GUI users, as they can quickly pull down published datasets and begin working with them without having to understand how IPFS/QRI stores and maintains the data.*  
 
@@ -30,15 +30,23 @@ This is a 1-1 relationship, a dataset can only link to one directory on the file
 
 ## Files
 
-A dataset directory should contain only two files, all other files will be ignored by qri.
+The following files abstract the qri dataset model, providing well-named and isolated files for the most recognizable parts of the dataset.
 
-### `dataset.json`
+### `meta.json`
 
-A subset of the full qri `dataset.json` with only user-editable keys: `meta`, `structure`, `transform`.  Everything else is managed by qri behind the scenes.
+The dataset's `meta` component.
+
+### `schema.json`
+
+The dataset's `structure.schema` component
 
 ### `body.[csv|json|xlsx]`
 
 The data file!
+
+### `dataset.json`
+
+A subset of the full qri `dataset.json` with only user-editable keys: `meta`, `structure`, `transform`.  Everything else is managed by qri behind the scenes.
 
 ## Commands
 
