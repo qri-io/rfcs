@@ -30,7 +30,7 @@ This is a 1-1 relationship, a dataset can only link to one directory on the file
 
 ## Files
 
-The following files abstract the qri dataset model, providing well-named and isolated files for the most recognizable parts of the dataset.
+The following files abstract the qri dataset model, providing well-named files for the most recognizable parts of the dataset.
 
 ### `meta.json`
 
@@ -46,24 +46,60 @@ The data file!
 
 ### `dataset.json`
 
-A subset of the full qri `dataset.json` with only user-editable keys: `meta`, `structure`, `transform`.  Everything else is managed by qri behind the scenes.
+Any additional uncontrolled `dataset` fields.  This file will probably not be used by novice users.  Users who are more familiar with the dataset model can use this file to add advanced configuration.
+
+### `.qri-ref`
+
+An invisible file used to specify the link between the current directory and the Qri repo.
 
 ## Commands
 
-- `qri init {name}` - creates an "empty" qri dataset in the user's local ipfs repo, adds a directory `/{name}` in the present working directory, links that directory to the qri dataset and populates an empty `dataset.json`
+- `qri init` - interactive prompt that sets up a qri dataset with linked files in the current directory. (User should have already created a directory to hold the dataset, `cd` into it, then run `qri init`)
 
-- `qri clone` - hybrid command that adds an existing dataset to the user's local IPFS repo _AND_ creates a linked working directory on the filesystem.  
+This should have an `non-interactive` flag that only needs a dataset name, which will link an empty dataset working directory to a name reference in the qri repo. (reserving the name for a future commit)
 
-- `qri status` - provides a report of the current state of the files in the current directory versus the last commit to the dataset.  Validates changes and gives a green light if everything is ready to be committed.
+### Prompts:
+  -  **Dataset Name** - (autopopulate with the name of the current directory) generates `meta.json` in the working directory with the supplied name as `title` and boilerplate `description`, `keywords`, etc
+
+  -  **File Type** - csv/json? Based on the user's selection, add dummy `body.csv|json` and `schema.json` to the working directory.
+
+- `qri clone` - hybrid command that adds an existing dataset to the user's local Qri repo _AND_ creates a linked working directory on the filesystem.  
+
+- `qri status` - provides a report of the current state of the files in the working directory versus the last commit to the dataset.  Validates changes and gives a green light if everything is ready to be committed.
+
+  - `.qri-ref`
+    - If this file doesn't exist, notify the user that they are not in a qri dataset directory
+    - If it does, provide info about the dataset and version this directory is linked to
+
+  - `body.csv|json`
+    - No changes/XX changes
+    - valid schema/XX schema violations
+    - error if not parsable CSV/JSON etc
+
+  - `meta.json`
+    - No changes/XX changes
+    - warning if missing suggested minimum metadata fields
+    - error if invalid
+
+  - `schema.json`
+    - No changes/XX changes
+    - error if invalid JSON schema
+
+  - `dataset.json`
+    - No changes/XX changes
+    - error if invalid
+
+
+- `qri log` - show the log of commits for the current dataset
 
 - `qri checkout {hash}` - change the files in the working directory to reflect a previous version of the qri dataset
 
-- `qri commit|save` - commits changes on the current dataset, and should throw errors if the changes to be committed are not valid for a commit
+- `qri commit|save` - commits changes on the current dataset, ensures that the working directory reflects the version of the dataset after the commit (e.g. if there was no `schema.json` because the user just initialized an empty working directory)
 
 Notes:
 - `qri add` - May cause confusion because it does not work the same way as `git add` as qri has no staging area.  For now it should remain unchanged, `qri add` will add the dataset to the user's local IPFS repo but will not create a linked directory on the filesystem.
 
-- `qri use` can still work, but if the user is currently in a linked qri dataset directory, all commands should assume the user is working with the current dataset
+- `qri use` can still work, but if the user is currently in a linked qri dataset directory, all commands should assume the user is working with the linked dataset
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
