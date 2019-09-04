@@ -1,6 +1,6 @@
 - Feature Name: Filesystem Integration
 - Start Date: 2019-07-02
-- RFC PR:
+- RFC PR: [#45](https://github.com/qri-io/rfcs/pull/45)
 - Issue:
 
 # Summary
