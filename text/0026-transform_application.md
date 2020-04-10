@@ -52,7 +52,7 @@ This transform changes the shape of the data, so it doesn't make sense to apply 
 This transform keeps the same shape of the data; running it a second time makes sense:
 ![transform that maintains shape](https://github.com/qri-io/rfcs/blob/rfc-xform/img/dataset_04_xform_same_shape.png)
 
-Similar to a manual save, a transform script represents a state transition, with a reproducable method to execute that state transition, and a mechanism called "recall" to clone that state transition when applicable.
+Similar to a manual save, a transform script represents a state transition, with a reproducible method to execute that state transition, and a mechanism called "recall" to clone that state transition when applicable.
 
 A crucial fact about this description is that a manual save and a transform cannot both happen at the same time. They are both state transitions, and since we define a linear history of commits, it's illegal to have two transitions at once. Neither forking nor merging are allowed:
 
@@ -86,7 +86,7 @@ FSI was designed with a lot of thought put into how it would work in relation to
 
 One major issue is the assumption that transforms make that they cannot be composed with a manual save operation, so no component files can be provided when the transform executes. But under FSI, since we're no longer performing patch operations, the full set of component files are always there in the working directory. Transforms don't know how to handle this, which frequently leads to confusing error messages and irreconcilable states.
 
-Getting down to it, there's a fundamental mismatch with how transforms are defined, and how FSI assumes it may operate. Before FSI, there was a one-to-one correlation between running a transform and creating a commit, hence why it made sense to tie that execution to the "save" command. The `--dry-run` flag was acting as a development tool. But with FSI, that original assumption no longer applies. A transform should be able to be executed as a way to modify the body without commiting, in fact this is probably going to be the expected behavior for any new user coming to qri.
+Getting down to it, there's a fundamental mismatch with how transforms are defined, and how FSI assumes it may operate. Before FSI, there was a one-to-one correlation between running a transform and creating a commit, hence why it made sense to tie that execution to the "save" command. The `--dry-run` flag was acting as a development tool. But with FSI, that original assumption no longer applies. A transform should be able to be executed as a way to modify the body without committing, in fact this is probably going to be the expected behavior for any new user coming to qri.
 
 # Proposal
 
@@ -104,4 +104,4 @@ Let's say we add a command `qri apply`, which runs a transform to arrive at some
 
 To expand on this idea, applying a transform could be generalized out to other tasks that execute some sort of data pipeline. For example, if we bring back viz, generating those visuals could also be seen as a type of apply operation, with the script being some sort of imaging library, and the output being static images. Or, our `qri update` feature could be somehow incorporated into this. Any sort of task that computes using a dataset to produce some view or artifact could be folded into this command. Better to have a generalized tool than create a one-off command that solves only a narrow problem.
 
-More details of the implementation should wait until the feature is further discussed and some rough concensus can be reached.
+More details of the implementation should wait until the feature is further discussed and some rough consensus can be reached.
