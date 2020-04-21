@@ -6,7 +6,7 @@
 # Summary
 [summary]: #summary
 
-Replace `publish/add` with `push/pull`, which default to pushing all data, pulling only the latest version. A new `clone` command combines `pull` with `checkout`.
+Replace `publish/add` with `push/pull`, which default to pushing all data, pulling only the latest version.
 
 # Motivation
 [motivation]: #motivation
@@ -28,12 +28,14 @@ The second problem comes from poor metaphore choices. Moving dataset histories a
 
 Making things worse, we're still stuck in a part-way transition to renaming "add" to "clone". What's worse, our concept of "clone" doesn't presently match what happens within git: `git-clone` both downloads _and checks out the repo into a target directory_. To trans
 
-We should remove `add` and `publish`, replacing them with three new commands:
+We should remove `add` and `publish`, and replace them with two new commands:
 * push: upload datasets to qri peers
 * pull: download datasets from the qri network
-* clone: pull + checkout
 
-I like push & pull because they're clear metaphors based on physical verbs. push & pull both describe who is initiating the action (you) and the directionality of the action. In this world clone becomes a porcelain command that properly matches the way git behaves.
+Push & pull improve on `add/publish` because they're clear metaphors based on physical verbs. push & pull both describe _who_ is initiating the action (you) and the _directionality_ of the action:
+
+* push: me - data -> you
+* pull: me <- data - you
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
@@ -95,27 +97,80 @@ Examples:
   # download a dataset log and all versions
   $ qri pull b5/world_bank_population --all
 
-  # pull a dataset from 
-  $ qri pull ramfox b5/world_bank_population
+  # pull a specific version from a remote by hash
+  $ qri pull ramfox b5/world_bank_population@/ipfs/QmFoo...
 
 Flags:
-  -l, --logs              save only dataset history
+  -l, --logs              download only dataset history
   -r, --revisions         fetch a set number of versions from the latest commit
   -a, --all               fetch all versions, overrides revisions
   -k, --keep-files        when in a working directory, don't update files
-
 ```
 
 `revisions` and `all` flags mimic the way `qri remove` works.
 
-### clone: pull and checkout a dataset
 
-We already have "clone" language in qri cloud, and have intended to rename `add` to `clone` for some time. The problem is add isn't the same thing as clone when compared to git. Removing the idea of publish & unpublish gives us back a little cognitive overhead that we can use for the classic combo of "get the latest version and checkout a directory.
+### checkout can pull
+
+We already have a checkout command, this RFC proposes that checkout will do the default of `qri pull` if a user tries to checkout a dataset they don't have.
 
 ```
-TODO (b5) - write clone help text
+$ qri checkout --help
+Create a linked directory and write dataset files to that directory. 
+
+If the dataset you are checking out isn't in the qri database, the latest 
+version of the dataset will be pulled before checking out.
+
+Usage:
+  qri checkout DATASET [flags]
+
+Examples:
+  # Place a copy of me/annual_pop in the ./annual_pop directory:
+  $ qri checkout me/annual_pop
+
+Flags:
+  -h, --help      help for checkout
+      --offline   don't fetch datasets from the network
+
+Global Flags:
+      --ipfs-path string   override IPFS path location (default "/Users/b5/.ipfs")
+      --log-all            log all activity
+      --no-color           disable colorized output
+      --no-prompt          disable all interactive prompts
+      --repo string        provide a path to load qri from (default "/Users/b5/.qri")
 ```
 
+### No more clone
+We already have "clone" language in qri cloud, and the original plan has been to rename `add` to `clone`. In discussion we've come to realize The problem is add isn't the same thing as clone when compared to git. Git needs `clone` because git does not have a built-in naming system. Clone copies a git repo _from a place_, usually a URL. 
+
+Because qri can resolve dataset names without additional information from the user we can add `pull` directly to `checkout`, and drop the term `clone` from our lexicon. We can use this saved term later for something like "following" a dataset. See the unsreolved questions section for more info.
+
+### Automatic pulling & Networking UX
+Giving `checkout` the power to pull `pull` when data isn't local is the first concrete example of _automatic pulling_. This is a shift in our intended user experince. We've wrestled with weather qri should default to making network requests for users. `qri --help` has a set of "Network commands", implying the other commands in qri _don't_ use the network. This breaks that assumption.
+
+Automatic pulling requires us to make a decision on this. In this regard, I think qri should work like a package manager, automatically making network requests when the user seeks datasets they don't have. `npm install some_package` downloads from the web. Both npm and qri have name resolution systems that make this process possible. From a UX perspective npm lets me _ignore_ the network and focus on writing software.
+
+We've struggled with the word "network" because unlike npm, qri also has a peer-2-peer system.
+
+I want to live in a world where I can punch a command into `qri sql` that references a dataset & don't have. Qri should figure out what I'm talking about, go find that dataset, pull the latest version, and run the query. There are questions about how this can and should work that require an RFC like this to get to.
+
+### Remotes default to a `none` retention strategy
+When pushing a dataset, the receiver is in charge of what they will accept. A remote can reject a push request for any reason. One of the primary reasons for rejecting a push is do to size constraints. Qri has a configuration value `remote.acceptSizeMax` that currently polices the maximium size of a dataset version. Any dataset version that exeeds this value is rejected by default.
+
+This RFC proposes changing the `remote.acceptSizeMax` value in configuration to apply to the on-disk size of _the entire dataset history_. As an example: if `acceptSizeMax` is `300Mb` that quota can be filled with one version that is `300Mb` in size, three totally unique `100Mb` versions, or any other combination where the deduplicated size of all versions is below the maximum threshold. 
+
+We say totally unique versions because qri de-duplicates versioned data. A block of dataset data may be used in any number of versions, and should only count towards the size threshold once.
+
+this RFC introduces the term _retention strategy_ to describe the approach a peer takes to 
+
+If the user requests to push N versions for Y data size, the typical response is to accept all pushed verions, so long as the total disk space consumed is less than `remote.acceptSizeMax`. When a user tries to push a number of versions above or say you are Z over the bar
+In which case you can reduce the number of versions until bellow the threshold
+Don’t think cloud should be aware of any of your versions until you ask to push them
+
+### Exceeding max storage on a remote errors by default
+
+
+The way we actually solve that situation is the subject of another RFC on storage. However we do it, a few characteristics will be true
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
@@ -132,6 +187,9 @@ TODO (b5) - write clone help text
 TODO (b5) - finish reference-level explanation
 ```
 
+### Increasing d web reliance
+We want to be defaulting to using the decentralized network more. Don't know how we're going to do this exactly, but cleaning up the way we move datasets around should put more hashes on more peers, which is a good thing for network health.
+
 # Drawbacks
 [drawbacks]: #drawbacks
 
@@ -140,8 +198,13 @@ This is a problem, but I think the deviation is justified because we want differ
 
 We need to make it _very_ clear in documentation that pulling a dataset doesn't get you all versions by default.
 
+### Default of no retention strategy can leave users stranded
+
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
+
+### Use a default version retention strategy a rolling window from HEAD
+One alternative we 
 
 ### Make pull fetch all versions when the total size is below a certain threshold
 This would add convenice when the storage cost is trivial. This can definitely be added later
@@ -149,16 +212,37 @@ This would add convenice when the storage cost is trivial. This can definitely b
 # Prior art
 [prior-art]: #prior-art
 
-Git.
+* git
+* docker
+* LOCKSS
+* npm / yarn
 
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-### Specifying allow-lists for peers acting as a remote (remote hosts)
-Currently we don't have an easy API for "I'll accept datasets from this person". There's nuance here, and it's closely related to access control. I'll file a separate RFC for this, but the short version is we should use an simple configuration-based allow-list as a start, then layer on something more robust as part of a broader access control project.
+### Push Permissions
+Currently we don't have an easy API for "I'll accept datasets from this person", which will be a prerequisite for any of this working. There's nuance here, and it's closely related to access control. I'll file a separate RFC for this, but the short version is we should use an simple configuration-based allow-list as a start, then layer on something more robust as part of a broader access control project.
 
-### Automatic pulling
-I want to live in a world where I can punch a command into `qri sql` that references a dataset & don't have. Qri should figure out what I'm talking about, go find that dataset, pull the latest version, and run the query. There are questions about how this can and should work that require an RFC like this to get to.
+### Retention Strategies
+This RFC only defines a default behaviour for `remote.acceptSizeMax` is exceeded. There are other behaviours
 
-### Increasing d web reliance
-We want to be defaulting to using the decentralized network more. Don't know how we're going to do this exactly, but cleaning up the way we move datasets around should put more hashes on more peers, which is a good thing for network health.
+strategies for dealing with 
+* none: error when quota is filled
+* archival: retain from initial commit forward, error if chain of versions is broken
+* rolling-window: keep the latest, drop older versions
+
+In discussions we've come to realize that retention strategies are a major concern for the health of the qri network as a whole. For example: if all peers default to rolling-window strategy, we end up with a network of actors that "forget" early versions when the max size is exceeded. This destroys the auditability of a dataset, because no one retains the history.
+
+A _retention_ strategy is also a _replication_ strategy. Put another way: which versions peers choose to keep determines the versions availabile to the network.
+
+### Following
+Retention Strategy + Automatic Pulling = dataset following.
+
+I think the thing that should replace `clone` long-term is the idea of "following" a dataset, which will check for updates to a dataset when a user goes online, and automatically update dataset versions according to the retention strategy. Use a `rolling-window` retention strategy means always having the most up-to-date data without having to do anything. 
+
+Following a dataset feels natural in an era of social media. A sizable network of peers following datasets they are interested in would mean that 
+
+This implies version retention strategies can also be applied to the "pull" side of a dataset, and may affect the way we define retention strategies in configuration.
+
+### Manual Storage Manipulation
+Before we can get to retention strategies at all, we need methods for manually evaluating and pruning storage locally, and making requests to remotes for storage manipulation.
