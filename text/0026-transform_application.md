@@ -54,6 +54,7 @@ This transform keeps the same shape of the data; running it a second time makes 
 
 Similar to a manual save, a transform script represents a state transition, with a reproducible method to execute that state transition, and a mechanism called "recall" to clone that state transition when applicable.
 
+TODO(dustmop): This paragraph is not technically true. Clarify the language to state what is really meant, in an accurate manner.
 A crucial fact about this description is that a manual save and a transform cannot both happen at the same time. They are both state transitions, and since we define a linear history of commits, it's illegal to have two transitions at once. Neither forking nor merging are allowed:
 
 ![conflict due to two state transitions](https://github.com/qri-io/rfcs/blob/rfc-xform/img/dataset_05_conflict.png)
@@ -95,13 +96,98 @@ Transforms should not be thought of as equivalent to a state transition to a new
 Let's say we add a command `qri apply`, which runs a transform to arrive at some output; but how that output is applies depends upon the context of the command.
 
 1) When operated in the context of a manual save, `apply` can write to stdout, replacing the need for `--dry-run`. In this case, we know that no commit is written, so we can change `save` to write to stdout in other cases.
+
 2) A transform as a state transition can be thought of as a `qri apply` operation piped into the `qri save` command, with appropriate syntacic sugar.
+
 3) For FSI, `qri apply` can modify the body in the working directory, letting the user see the results without messing with the `save` and `--dry-run` comamnds. When they eventually do run `qri save`, we should stash the current body file, apply the transform and verify one of the following:
+
   * The stashed body matches the output of the transform
   * The stashed body is unchanged from the previous commit, replace it with the transforms' output
   * Otherwise throw an error because the user may be making a mistake
+ 
 4) Not mentioned above, but once Desktop has better support for transform, we probably will eventually want some interactive development environment. Perhaps transforms can be incrementally compiled and applied, resulting in fast turnaround.
 
 To expand on this idea, applying a transform could be generalized out to other tasks that execute some sort of data pipeline. For example, if we bring back viz, generating those visuals could also be seen as a type of apply operation, with the script being some sort of imaging library, and the output being static images. Or, our `qri update` feature could be somehow incorporated into this. Any sort of task that computes using a dataset to produce some view or artifact could be folded into this command. Better to have a generalized tool than create a one-off command that solves only a narrow problem.
 
-More details of the implementation should wait until the feature is further discussed and some rough consensus can be reached.
+Suggestions from @b5 about commands that already exist that could be considered applications:
+
+```
+sql
+stats
+render
+```
+
+Maybe also:
+
+```
+validate
+diff
+```
+
+## Caveat
+
+We need to constrain the definition of apply somewhat, so that it doesn't become simply synonymous with "code", and therefore lose all useful meaning. To do that, we need to figure out what's the benefit of defining application, what sort of guarantees do we want from it, as something that acts like running a transform, but is more general.
+
+# Notes
+
+### How we want application to behave
+
+- Inspiration from functional programming & functional data structures
+- A way to wrangle state & control side-effects
+- The output of apply may (but does not necessarily have to be) be used to create a component or pseudo-component of a dataset.
+- Reproducable
+  - capture http (have cloud sign requests)
+  - though 2 runs may not technically produce the same thing, we can know *when* and *why* they don't
+- Idempotent
+  - running the same application twice should be safe
+  - Qri should be able to tell that an apply operation was already run
+  - Immitate a functional data structure
+      * The state transition mentioned higher up still exists, it just doesn't necessarily map to commits all of the time
+
+### what do we gain by making apply more general
+
+- Easy of use is the main thing, a single command to "do stuff"
+- Guarantees about reproducability and tracking work without having to spend brain juice
+- Avoid the Jupyter notepad "statefulness" problem
+
+### Changes to save path
+
+- Need to unwrangle transform out of the primary code path so it's not so coupled
+- The `save` command should keep the transform component, instead of removing it after the commit where it gets executed
+- that was a consequence of the old way of thinking (--file transform == commit)
+
+# UI
+
+Before, running a transform would happen just by calling `save` with `--file transform.star`. We should add an `apply` command, and saving and applying at the same time should become some special mode of one of those two commands.
+
+* what to do instead of --dry-run
+
+```
+qri apply my_script.star me/my_ds
+```
+
+should look similar to the below save call:
+
+* how to save with a transform
+
+Not sure?
+
+```
+qri save --apply my_script.star me/my_ds
+qri apply --save my_script.star me/my_ds
+qri save --file my_script.star --no-apply me/my_ds
+```
+
+Want to be careful with the desire to add a transform but not run it. The last command above expresses that intention.
+
+* what to do in FSI
+
+```
+qri apply my_script.star
+```
+
+Easiest. This should overwrite the body in the working directory. When the user runs `qri save`, rerun the application, since qri wants it to be idempotent, the same modified body should result.
+
+* recall
+
+Seems to become unnecessary, since running `apply` is now the way to rerun a transform
