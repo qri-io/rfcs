@@ -11,19 +11,45 @@ Define a hierarchy for configuration overrides, revise configuration fields with
 # Motivation
 [motivation]: #motivation
 
-<!-- Why are we doing this? What use cases does it support? What is the expected outcome? -->
+Our configuration story needs work. _Many_ fields are not in use, and there's ambiguity about how 
+
+This RFC proposes a few concrete changes:
+1. Overhaul configuration data structures, removing unnecessary fields & adding new ones
+1. Define how environment variables and configuration interact.
+1. Formalize the hierarchy of different configuration sources
+1. Formalize the list of enviornment variables Qri is sensitive to.
+1. Switch to multiaddresses for all network configuration.
+1. Move ipfs repo location into configuration, deprecate support for `IPFS_PATH`.
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-### Formalizing support for environment variables
 
-```
-TODO (b5) - we need to talk about how env vars are going to play into configuration
-Currently we have `QRI_CONFIG_DATA` as the only supported environemnt variable, which is only honored at setup. Maybe it should stay as a single variable, and just be used all the time?
-```
+### Environment Variables don't configure, they point to configuration files
 
-Using env var configuration should be _optional_,
+This is the total list of environemnt variables qri is sensitive to:
+
+| variable name            | description                           |
+| ------------------------ | ------------------------------------- |
+| `PAGER`                  | what pager to use for output          |
+| `QRI_PATH`               | path to qri configuraiton data        |
+| `QRI_SETUP_CONFIG_DATA`  | JSON data to use when creating a repo |
+| `IPFS_SETUP_CONFIG_DATA` | JSON data when initializing IPFS      |
+| `QRI_PRIVATE_KEY`        | defined in the private key RFC        |
+| `QRI_BACKTRACE`          | show stack trace output on crash      |
+
+
+_note: I (b5) haven't had a chance to vet our dependencies for env vars they are sensitive to, so this list is only complete for the purpose of this RFC._
+
+This RFC proposes environment variables are _not_ a direct source of configuration. Instead environment variables either point to a path to load configuration from, or contain a payload to create an initial configuration file.
+
+`QRI_SETUP_CONFIG_DATA` as the only supported is only honored by `qri setup`. We need `SETUP` env variables for operating within containerized contexts, but that's about it.
+
+Directing as much configuration as possible to a configuration file cuts down on potential sources of confusion. As an example, `git` will listen to `$PAGER`, `$GIT_PAGER`, and `git config core.pager`, in that order, and I (b5) had to look up what the order is.
+
+Instead of supporting a potential `QRI_PAGER` environment variable, we should _only_ have `qri.cli.pager` to override the default value.
+
+All that said, using env var configuration should be _optional_, meaning a user employing qri as a library can provide an option to the `lib.NewInstance` constructor function that ignores all environment variables.
 
 ### Config Hierarchy
 
@@ -31,16 +57,19 @@ Configuration details should be unified into a single data structure loaded in a
 
 * default configuration
 * qri repo configuration file
-* environment variables
-* command-line flags
+* global command-line flags
 
 We can imagine the final computed configuration as a _fold-left_ operation:
 
 ```
-config = fold_left(defaultConfig(), repoConfig(), getEnvVarConfig(), getCLIConfig())
+config = fold_left(defaultConfig(), ConfigFile(), CliFlags())
 ```
 
-It's worth noting that
+Any qri process loads at most 1 configuration file. The source of that file defaults to `$HOME/.qri/config.yaml`, and can be overridden with the `QRI_PATH` environment variable.
+
+In the event that a command line flag and a configuration setting are affecting the same behaviour, the
+command line flag wins, overriding any configuration setting. With that said, **flags should change parameters on lib method calls, not affect configuration**.
+
 
 ### Config in alternate contexts:
 
@@ -55,11 +84,13 @@ config = fold_left(defaultConfig(), getEnvVarConfig(), getCLIConfig())
 When using qri as a library, we don't have the `cmd` package, and often supply configuration details directly.
 
 ```
-config = fold_left(defaultConfig(), getEnvVarConfig(), getCLIConfig())
+config = fold_left(defaultConfig(), getEnvVarConfig())
 ```
 
-### Determining path to a configuration file
-We need a section describing default paths, 
+### Use multiaddrs, port 0 for random open port
+We should switch all `port` fields to an `address` field instead, and accept a [multiaddr](https://github.com/multiformats/go-multiaddr) string to enhance configurability.
+
+In addition, we should support the convention of using `0` as a port number to indicate "any open port", allowing the operating system to choose.
 
 
 # Reference-level explanation
@@ -82,6 +113,7 @@ P2P:
   profilereplication: full
   bootstrapaddrs: []
   httpgatewayaddr: ""
+  pubkey: ""
 Repo:
   middleware: []
 Webapp:
@@ -100,60 +132,27 @@ Update:
   type: fs
 ```
 
-### Expanding Store to Filesystems
-
-Currently we hard-code far to many qfs configuration details. qfs spins up a multiplexed-filesystem by default, allowing multiple sources of data. If we expand "Store" to "Stores", we can make this fully configurable. The default configuration qri is using would look like this:
-
-```yaml
-Filesystems:
-- type: ipfs
-  options:
-    api: true
-    pubsub: false
-- type: local
-- type: http
-```
-
-The first win: users could remove `local` or `http` to disable qri's access to the local filesystem or HTTP for the purpose of reading data. We can also expand for later filesystems & options. an `s3` implementation would be nice. this is also how we'd do `dat` integration.
-
-We could use a convention of the default write destination being the first listed filesystem, and present a big warning if users configure anything other than `ipfs` in the first position.
-
-It'd be great to delegate this entire section of store setup to the qfs package, aliasing up the conguration data structure into the config package.
-
-
 ```yaml
 API:
   allowedorigins:
   - electron://local.qri.io
   - http://localhost:2505
-  - http://localhost:6006
-  - http://app.qri.io
-  - https://app.qri.io
   enabled: true
-  port: 2503
+  address: "/ip4/0.0.0.0/tcp/2503"
   readonly: false
   serveremotetraffic: false
 CLI:
   colorizeoutput: true
+  pager: ""
 Logging:
   levels:
-    actions: info
-    base: info
-    core: debug
-    cron: debug
-    dsfs: debug
     lib: info
-    logbook: info
-    qriapi: info
-    qricore: info
-    qrip2p: info
 P2P:
+  address: "/ip4/0.0.0.0/tcp/2501"
   addrs: null
   enabled: true
   peerid: QmdJQpcmGMkNtKYv5bviZ7z9kPh7uLKSMzqdSbemYs3XpH
-  port: 0
   privkey: <base64-encoded private key>
-  pubkey: ""
   qribootstrapaddrs:
   - /ip4/35.193.162.149/tcp/4001/ipfs/QmTZxETL4YCCzB1yFx4GT1te68henVHD1XPQMkHZ1N22mm
   - /ip4/35.239.80.82/tcp/4001/ipfs/QmdpGkbqDYRPCcwLYnEm8oYGz2G9aUZn9WwPjqvqw3XUAc
@@ -181,7 +180,7 @@ Profile:
   updated: "2018-04-19T18:10:46.627471799-04:00"
 RPC:
   enabled: true
-  port: 2504
+  address: "/ip4/0.0.0.0/tcp/2504"
 Registry:
   location: https://registry.qri.cloud
 Remote:
@@ -197,43 +196,73 @@ Revision: 2
 Filesystems:
 - type: ipfs
   options:
+    path: ./ipfs
     api: true
     pubsub: false
 - type: local
 - type: http
 ```
 
+### Expanding Store to Filesystems
+
+Currently we hard-code qri filesystem (`qfs`) configuration details. qfs spins up a multiplexed-filesystem by default, composing multiple file-like persistence layers using prefix demuxing. If we expand "Store" to "Filesystem", we can make this fully configurable. The default configuration qri is using would look like this:
+
+```yaml
+Filesystems:
+- type: ipfs
+  config:
+    path: ~/.ipfs
+    api: true
+    pubsub: false
+- type: local
+- type: http
+```
+
+The first win: users could remove `local` or `http` to disable qri's access to the local filesystem or HTTP for the purpose of reading data. We can also expand for later filesystems & options. an `s3` implementation would be nice. this is also how we'd do `dat` integration.
+
+We could use a convention of the default write destination being the first listed filesystem, and present a big warning if users configure anything other than `ipfs` in the first position.
+
+It'd be great to delegate this entire section of store setup to the qfs package, aliasing up the conguration data structure into the config package.
+
+### move IPFS repo location into configuration
+the above filesystem example shows a `ipfs` filesystem type with a `config.path` field. This value should now the be canonical source of where to load.
+
+the global `ipfs-path` flag should also be removed:
+```
+      --ipfs-path string   override IPFS path location (default "/Users/b5/.ipfs")
+```
+
+### Relative Paths in configuration files are relative to the file
+If a configuration value specifies a filepath, and the given path is relative, that path should be relative to the location of the config file.
+
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
 
-
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
+### Per-field env vars
+We could support setting configuration on a per-field basis. I'm not sure that's totally necessary at this point.
 
+### Attach config to context.Context
+We could build a sophisticated system of attaching configuration to request contexts, to support scoping configuration on a per-request basis. We might need to in the future, but it's overkill for the moment.
+
+### Config changes emit events
+We could also use the event bus to propagate changes to configuration. Again, overkill for now, but we could do so later.
 
 # Prior art
 [prior-art]: #prior-art
 
-<!-- Discuss prior art, both the good and the bad, in relation to this proposal.
-A few examples of what this can include are:
-
-- Does this feature exist in other places and what experience have their community had?
-- For community proposals: Is this done by some other community and what were their experiences with it?
-- For other teams: What lessons can we learn from what other communities have done here?
-- Papers: Are there any published papers or great posts that discuss this? If you have some relevant papers to refer to, this can serve as a more detailed theoretical background.
-
-This section is intended to encourage you as an author to think about the lessons from other projects, provide readers of your RFC with a fuller picture.
-If there is no prior art, that is fine - your ideas are interesting to us whether they are brand new or if it is an adaptation from other languages.
-
-Note that while precedent set by other projects is some motivation, it does not on its own motivate an RFC.
-Please also take into consideration that Qri sometimes intentionally diverges from other projects. -->
+### Configuration:
+awesome-go has an entire section of configuration libraries https://awesome-go.com/#configuration. Some of the ones I found intersting:
+* hot-reloading config: https://github.com/lalamove/konfig
+* env var config with lots of bells& whistles: https://github.com/kelseyhightower/envconfig
 
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-<!-- - What parts of the design do you expect to resolve through the RFC process before this gets merged?
-- What parts of the design do you expect to resolve through the implementation of this feature before stabilization?
-- What related issues do you consider out of scope for this RFC that could be addressed in the future independently of the solution that comes out of this RFC? -->
+Some configuration things are out of scope for this RFC, but should be discussed later:
+* Distinguish runtime _options_ from static _configuration_.
+* hot-swapping configuration.
