@@ -54,22 +54,26 @@ This transform keeps the same shape of the data; running it a second time makes 
 
 Similar to a manual save, a transform script represents a state transition, with a reproducible method to execute that state transition, and a mechanism called "recall" to clone that state transition when applicable.
 
-TODO(dustmop): This paragraph is not technically true. Clarify the language to state what is really meant, in an accurate manner.
-A crucial fact about this description is that a manual save and a transform cannot both happen at the same time. They are both state transitions, and since we define a linear history of commits, it's illegal to have two transitions at once. Neither forking nor merging are allowed:
+A crucial fact about this description is that a manual save and a transform have the potential to conflict when used at the same time. Since they are both acting as state transitions, we need to ensure that the modifications introduced by each are able to compose together into a single change, in order to fit within our linear history of commits. Neither forking nor merging are allowed:
 
 ![conflict due to two state transitions](https://github.com/qri-io/rfcs/blob/rfc-xform/img/dataset_05_conflict.png)
 
-What this means in practice is that a save operation cannot have both a transform script and a manual component change, via patch application. These can't safely compose, so we flat out reject them.
+What this means in practice is that a save operation cannot have both a transform script and a manual change, via patch application, if they are modifying the same component.
 
 ```
   qri save --file my_transform.star --file new_meta.json me/my_ds
+```
+
+```
+def transform(ctx, ds):
+  ds.set_meta("title", "New Title")
 ```
 
 ## File System Integration
 
 Introduced next was filesystem integration, which would allow a user to "checkout" a dataset. This creates a "working directory" on their local filesystem which has a link file (.qri-ref) that connects a number of component files (such as meta.json, body.csv) to the dataset that exists within the qri repository. When the user runs `qri save` to create a new version, the files in the working directory are converted into something with the same shape as what's in our repository.
 
-The way this works is that we think of the working directory as being a staging area for a future commit. Since the checked out dataset is not immutable data like that in our repository store, its files are able to be modified. Not until the user issues `qri save` is the working directory turned into a commit; until then it is only a potential future state to transition to:
+The way this works is that we think of the working directory as being a staging area for a future commit. Since the checked out dataset is not immutable data like that in our repository store, its files are able to be modified. Not until the user issues `qri save` is the working directory turned into a commit; before then it is only a potential future state to transition to:
 
 ![checkout to working directory](https://github.com/qri-io/rfcs/blob/rfc-xform/img/dataset_06_working_dir.png)
 
@@ -80,22 +84,22 @@ Furthermore, the type of "patch application" mentioned in the section about "Man
 Here are the pieces in place now:
 
 1) A manual save, created by providing file components, adds a commit to a dataset in our repository
-2) A transform, which when executed will act as a state transition to a new commit. Cannot be composed with (1)
+2) A transform, which when executed will act as a state transition to a new commit. Might conflict with (1)
 3) FSI's full replacement save, which converts the contents of the working directory to a new commit
 
 FSI was designed with a lot of thought put into how it would work in relation to manual saves. However, the combination of transforms within FSI has not been clearly defined. We worked under the assumption that transform authors would use them only with non-checked out datasets. But as time has passed, we've found this no longer to be the case.
 
-One major issue is the assumption that transforms make that they cannot be composed with a manual save operation, so no component files can be provided when the transform executes. But under FSI, since we're no longer performing patch operations, the full set of component files are always there in the working directory. Transforms don't know how to handle this, which frequently leads to confusing error messages and irreconcilable states.
+One major issue comes from the assumption that transforms need to check for conflicts with manual save operations. Under FSI, since we're no longer performing patch operations, the full set of component files are always there in the working directory. Transforms don't know how to handle this, and detect it as a conflict, which frequently leads to confusing error messages and irreconcilable states.
 
 Getting down to it, there's a fundamental mismatch with how transforms are defined, and how FSI assumes it may operate. Before FSI, there was a one-to-one correlation between running a transform and creating a commit, hence why it made sense to tie that execution to the "save" command. The `--dry-run` flag was acting as a development tool. But with FSI, that original assumption no longer applies. A transform should be able to be executed as a way to modify the body without committing, in fact this is probably going to be the expected behavior for any new user coming to qri.
 
 # Proposal
 
-Transforms should not be thought of as equivalent to a state transition to a new commit. They should be viewed literally as a *transform*, from some input to some output, and only sometimes is that performed as creating a commit.
+Transforms should *not* be thought of as equivalent to a state transition to a new commit. They should be viewed literally as a *transform*, from some input to some output, and only sometimes is that performed as creating a commit.
 
-Let's say we add a command `qri apply`, which runs a transform to arrive at some output; but how that output is applies depends upon the context of the command.
+Let's say we add a command `qri apply`, which runs a transform to arrive at some output; but where that output ends up will depend upon the context of the command.
 
-1) When operated in the context of a manual save, `apply` can write to stdout, replacing the need for `--dry-run`. In this case, we know that no commit is written, so we can change `save` to write to stdout in other cases.
+1) When operated in the context of a vanilla dataset in the repository, `apply` can write to stdout, replacing the need for `--dry-run`. In this case, we know that no commit is written, so we can change `save` to write to stdout in other cases.
 
 2) A transform as a state transition can be thought of as a `qri apply` operation piped into the `qri save` command, with appropriate syntacic sugar.
 
@@ -103,7 +107,7 @@ Let's say we add a command `qri apply`, which runs a transform to arrive at some
 
   * The stashed body matches the output of the transform
   * The stashed body is unchanged from the previous commit, replace it with the transforms' output
-  * Otherwise throw an error because the user may be making a mistake
+  * Otherwise throw an error because the user may be making a mistake, mixing a body from a transform with manual edits
  
 4) Not mentioned above, but once Desktop has better support for transform, we probably will eventually want some interactive development environment. Perhaps transforms can be incrementally compiled and applied, resulting in fast turnaround.
 
@@ -128,66 +132,254 @@ diff
 
 We need to constrain the definition of apply somewhat, so that it doesn't become simply synonymous with "code", and therefore lose all useful meaning. To do that, we need to figure out what's the benefit of defining application, what sort of guarantees do we want from it, as something that acts like running a transform, but is more general.
 
-# Notes
-
 ### How we want application to behave
 
 - Inspiration from functional programming & functional data structures
 - A way to wrangle state & control side-effects
-- The output of apply may (but does not necessarily have to be) be used to create a component or pseudo-component of a dataset.
-- Reproducable
+- The input should be one or more datasets, plus whatever specific scripts the application requires
+- The output of apply should be a dataset or components of a dataset, but not more than one dataset.
+- Reproducible
   - capture http (have cloud sign requests)
   - though 2 runs may not technically produce the same thing, we can know *when* and *why* they don't
 - Idempotent
   - running the same application twice should be safe
   - Qri should be able to tell that an apply operation was already run
-  - Immitate a functional data structure
+  - Imitate a functional data structure
       * The state transition mentioned higher up still exists, it just doesn't necessarily map to commits all of the time
 
-### what do we gain by making apply more general
+### What do we gain by making apply more general
 
 - Easy of use is the main thing, a single command to "do stuff"
 - Guarantees about reproducability and tracking work without having to spend brain juice
 - Avoid the Jupyter notepad "statefulness" problem
 
-### Changes to save path
+### Changes to save codepath
 
 - Need to unwrangle transform out of the primary code path so it's not so coupled
 - The `save` command should keep the transform component, instead of removing it after the commit where it gets executed
 - that was a consequence of the old way of thinking (--file transform == commit)
 
-# UI
+# Feedback from users
 
-Before, running a transform would happen just by calling `save` with `--file transform.star`. We should add an `apply` command, and saving and applying at the same time should become some special mode of one of those two commands.
+We noted much confusion about how transform works, especially from @feep and @hbruch. A lot of this inspired and motivated the creation of this RFC. Here are some examples:
 
-* what to do instead of --dry-run
+Holger complaining about transforms in working directory:
+
+https://discordapp.com/channels/497052800778502152/580806684088336395/693344064732397578
+
+-----
+
+Transform should remain on the dataset, instead of being removed once run:
+
+https://discordapp.com/channels/497052800778502152/580806684088336395/694301952456130757
+
+-----
+
+feep: "Is it possible to separate transforms from commits?"
+
+https://discordapp.com/channels/497052800778502152/580806684088336395/694543025791172668
+
+-----
+
+feep: "What if qri transform was a thing? If you ran it with a linked dataset it would make the changes locally but not commit them."
+
+https://discordapp.com/channels/497052800778502152/580806684088336395/694543113909174273
+
+# User Interface (command-line)
+
+Before, running a transform would happen just by calling `save` with `--file transform.star`. We should add an `apply` command, and saving and applying at the same time should become some special mode of `save`.
+
+### Apply command
 
 ```
-qri apply my_script.star me/my_ds
+qri apply xform.star me/my_ds
 ```
 
-should look similar to the below save call:
+Run the transform, output to stdout, replacing what `--dry-run` does now
 
-* how to save with a transform
-
-Not sure?
+----
 
 ```
-qri save --apply my_script.star me/my_ds
-qri apply --save my_script.star me/my_ds
-qri save --file my_script.star --no-apply me/my_ds
+qri apply xform.star me/my_ds -o result.csv
 ```
 
-Want to be careful with the desire to add a transform but not run it. The last command above expresses that intention.
+Runs the transform, save to file
 
-* what to do in FSI
+----
 
 ```
-qri apply my_script.star
+qri apply me/my_ds
 ```
 
-Easiest. This should overwrite the body in the working directory. When the user runs `qri save`, rerun the application, since qri wants it to be idempotent, the same modified body should result.
+Runs the transform that is stored on the dataset, output to stdout, replacing what `--recall` does now
 
-* recall
+----
 
-Seems to become unnecessary, since running `apply` is now the way to rerun a transform
+(FSI only) 
+
+```
+qri apply
+```
+
+Runs the transform in the working directory, save to body file, and also output to stdout.
+
+----
+
+Note that `apply` takes two optional arguments (plus flags). One argument is the transform script, the other is the dataset reference.
+
+### Save command
+
+The `save` command may be combined with `apply` to handle the original use case of creating a new commit by running a transform as a state transition. This takes the form of the `--apply` flag.
+
+Here's the old way of saving with a transform:
+
+```
+qri save --file xform.star me/my_ds
+```
+
+Under the new paradigm, it's ambiguous what this intention is, the user may be adding a transform they want to run, or adding a transform that they do not want to run. This will henceforth become an error: `saving with a new transform requires either --apply or --no-apply flag`
+
+----
+
+```
+qri save --apply --file xform.star me/my_ds
+```
+
+Put the transform on this dataset, run it, save a commit
+
+----
+
+```
+qri save --no-apply --file xform.star me/my_ds
+```
+
+Add the transform, save a commit but don't run it. Only required for the commit that adds the transform; don't need to keep passing `--no-apply` to future `save` commands (unless another transform is added with `--file`).
+
+----
+
+```
+qri save --apply me/my_ds
+```
+
+Rerun the transform this dataset has attached to it (used to be `--recall`).
+
+----
+
+(FSI only)
+
+```
+qri save --apply
+```
+
+Run the transform in the working directory, and save the result as a new commit. See "FSI State Tracking" section below.
+
+----
+
+Notice:
+
+`--apply` is a boolean flag, doesn't take a file name
+
+`--no-apply` is also a boolean, only needed when you add a transform file the first time
+
+  - works for both FSI and saving in the repository
+
+### Future possibilities
+
+```
+qri apply structure.json me/my_ds
+```
+
+Could be treated as an alias for validation
+
+# Implementation
+
+## Applicator
+
+Define an *applicator* as a processor that is able to implement the `apply` command. Some examples:
+
+* starlark runner
+* validation
+* visualization renderer
+* sql engine
+
+input: one or more datasets, applicator specific scripts
+
+output: one dataset, or components of that dataset
+
+## Commit component
+
+The commit component should get a new field that adds information about whether an `apply` operation was used to create this commit. 
+
+For example:
+
+```
+type Commit struct {
+  ...
+  Apply Application
+}
+
+type Application struct {
+  Name string
+  Checksum string
+  Path string
+  ...
+}
+```
+
+We should also in the near future add http capture, and put auditable information in the same section. Details to follow in future documents.
+
+## FSI state tracking
+
+Suppose a user has a working directory in a clean state. Nothing has been modified from the head version saved in the repository. When the user runs `status` or `save` we detect that nothing has changed.
+
+```
+$ qri status
+
+working directory is clean
+```
+
+But then they manually modify the body by appending a row
+
+```
+$ echo "new,row,123" >> body.csv
+```
+
+By running `status`, they can see that the working directory is now "dirty".
+
+```
+$ qri status
+
+  modified: body.csv
+```
+
+Running `save` creates a new commit, leaving the working directory in a clean state again.
+
+```
+$ qri save
+
+dataset saved: ...
+```
+
+When the user runs `apply`, run the transform. The result should both overwrite what is in the body file (to aid in IDE based development) and also output to stdout. If the transform encounters an error, the body should not be modified.
+
+```
+$ qri apply
+```
+
+Running `qri apply` in an FSI directory should also create a `commit.json` component with the Apply subcomponent filled in. (alternatively, create an `apply.json` subcomponent).
+
+When `apply` is run, if the body is not clean *and* `commit.apply` does not exist, warn the user that they're going to overwrite some manual changes to the body.
+
+When the user runs `qri save`, we must take the following steps:
+
+1) Was either the `--apply` flag used, or a `commit.apply` present? If not go to (5).
+
+2) Is the body dirty? If so, stash it and restore the body from the most recent commit.
+
+3) Apply the transform, saving the result to the body
+
+4) Was something stashed before? If so, compare the stashed value against the result of the transform. If they don't match, display an error. Otherwise, in either case, go to the next step
+
+5) Save a new commit
+
+This above process prevents the user from modifying the body while also `apply`ing a transform. Doing so is error-prone and hard to audit, so we should prevent users from making mistakes like this. They can provide the `--force` flag to proceed anyway if they really want to.
