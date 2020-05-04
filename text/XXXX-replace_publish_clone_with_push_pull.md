@@ -1,12 +1,12 @@
 - Feature Name: Dataset Push & Pull
-- Start Date: <!-- (fill me in with today's date, YYYY-MM-DD) -->
-- RFC PR: <!-- (leave this empty) -->
+- Start Date: 17-04-2020
+- RFC PR: [#49](https://github.com/qri-io/rfcs/pull/49)
 - Issue: <!-- (leave this empty) -->
 
 # Summary
 [summary]: #summary
 
-Replace `publish/add` with `push/pull`, which default to pushing as much data as possible, and pulling only the latest version. Implient _automatic following_ within `checkout` to get git-clone like behaviour. Introduce _retention strategies_, a subject for later RFCs.
+Replace `publish/add` with `push/pull`, which default to pushing as much data as possible, and pulling only the latest version. Implement _automatic pulling_ within `checkout` to get git-clone style behaviour. Introduce _retention strategies_, a subject for later RFCs.
 
 # Motivation
 [motivation]: #motivation
@@ -15,7 +15,7 @@ This RFC addresses two problems with the way we move versions around in qri:
 1. datasets published to the registry are creating weird states where users can't get versions
 2. the terms we use for moving versions around are confusing.
 
-The first problem comes down to improper defaults. Publish currently sends _only the latest version_ of a dataset. If a user creates five versions, then runs publish, only the fifth version is pushed, leaving any party intersted in earlier versions with only the author as a viable source of versioned data. If the author isn't online and dialable, those prior versions are unavailable to the network. On the upside, our work on logbook and log syncronization means that at least the _history_ of the dataset is visible.
+The first problem comes down to improper defaults. Publish currently sends _only the latest version_ of a dataset. If a user creates five versions, then runs publish, only the fifth version is pushed, leaving any party intersted in earlier versions with only the author as a viable source of versioned data. If the author isn't online and dialable, those prior versions are unavailable to the network. On the upside, our work on logbook and log synchronization means that at least the _history_ of the dataset is visible.
 
 Publishing should default to pushing _as much data as the remote is willing to accept_. Publishers sending data to a willing host should be trying to keep the network as robust as possible by making lots of copies.
 
@@ -24,7 +24,7 @@ _Consumers_ of data on the other hand want just enough data to make use of the d
 * fetch a specific historical version of a dataset
 * re-fetch once a dataset update has been published
 
-The second problem comes from poor metaphor choices. Moving dataset histories around with "publish" and "add" doesn't map properly to the terms used. "publish" is putting versions of a dataset on a remote peer, and it's really only a "publish" if that peer elects to broadcast the existince of that dataset to other peers, and misses the main thing publish does: place a dataset version on a remote.
+The second problem comes from poor metaphor choices. Moving dataset histories around with "publish" and "add" doesn't map properly to the terms used. "publish" is putting versions of a dataset on a remote peer, and it's really only a "publish" if that peer elects to broadcast the existence of that dataset to other peers, and misses the main thing publish does: place a dataset version on a remote.
 
 We should remove `add` and `publish`, and replace them with two new commands:
 * push: upload datasets to qri peers
@@ -57,9 +57,6 @@ https://qri.io/docs/hosting-datasets
 Usage:
   qri push [REMOTE] DATASET [DATASET...] [flags]
 
-Aliases:
-  publish
-
 Examples:
   # push a dataset to the registry
   $ qri push me/dataset
@@ -71,7 +68,8 @@ Examples:
   $ qri push xiao me/dataset --revisions 2
 
 Flags:
-  -l, --logs               send only dataset history
+      --latest             send only histry and the most recent dataset version
+      --logs               send only dataset history, overrides latest
   -r, --revisions          send only the lastest commit data
 ```
 
@@ -81,9 +79,8 @@ $ qri pull --help
 Pull downloads datasets and stores them locally, fetching the dataset log and
 dataset version(s). By default pull only fetches the latest version of a dataset
 
-Because pull grabs the latest version by default, it's common to 
-
-If qri connect is running
+If qri connect is running, pull can fetch datasets from other peers in the qri
+network
 
 Usage:
   qri pull [REMOTE] DATASET [DATASET...] [flags]
@@ -142,18 +139,18 @@ Global Flags:
 ### No more clone
 We already have "clone" language in qri cloud, and the original plan has been to rename `add` to `clone`. In discussion we've come to realize The problem is add isn't the same thing as clone when compared to git. Git needs `clone` because git does not have a built-in naming system. Clone copies a git repo _from a place_, usually a URL. 
 
-Because qri can resolve dataset names without additional information from the user we can add `pull` directly to `checkout`, and drop the term `clone` from our lexicon. We can use this saved term later for something like "following" a dataset. See the unsreolved questions section for more info.
+Because qri can resolve dataset names without additional information from the user we can add `pull` directly to `checkout`, and drop the term `clone` from our lexicon. We can use this saved term later for something like "following" a dataset. See the unresolved questions section for more info.
 
 ### Automatic Pulling & Networking UX
-Giving `checkout` the power to pull `pull` when data isn't local is the first concrete example of _automatic pulling_. This change means checkout by default assumes it can use the network to fulfill requests, which is is a shift in our user experience. We've wrestled with weather qri should default to making network requests for users for some time. As an example `qri --help` has a set of "Network commands", implying the other commands in qri _don't_ use the network. This RFC proposes we break that distinction, and assume that any command within qri _might_ use the network, unless instructed otherwise with either a configuration value or an `--offline` flag.
+Giving `checkout` the power to pull `pull` when data isn't local is the first concrete example of _automatic pulling_. This change means checkout by default assumes it can use the network to fulfill requests, which is is a shift in our user experience. We've wrestled with whether qri should default to making network requests for users for some time. As an example `qri --help` has a set of "Network commands", implying the other commands in qri _don't_ use the network. This RFC proposes we break that distinction, and assume that any command within qri _might_ use the network, unless instructed otherwise with either a configuration value or an `--offline` flag.
 
-Automatic pulling requires us to make a decision on this, and I think it's the right choice is to assume network access by default. We can take a cue from package managers, which also have a namespace, and assume network acess, automatically making network requests when the user seeks datasets they don't have. `npm install some_package` downloads from the web. Both npm and qri have name resolution systems that make this process possible. From a UX perspective npm lets me _ignore_ the network and focus on writing software.
+Automatic pulling requires us to make a decision on this, and I think it's the right choice is to assume network access by default. We can take a cue from package managers, which also have a namespace, and assume network access, automatically making network requests when the user seeks datasets they don't have. `npm install some_package` downloads from the web. Both npm and qri have name resolution systems that make this process possible. From a UX perspective npm lets me _ignore_ the network and focus on writing software.
 
 We've struggled with the word "network" because unlike npm, qri also has a peer-2-peer system, but I think the simple answer to needing assets that may only be available in a p2p context are to show an error asking users to run `qri connect`.
 
 I want to live in a world where I can punch a command into `qri sql` that references a dataset & don't have. Qri should figure out what I'm talking about, go find that dataset, pull the latest version, and run the query. The automatic pulling characteristics of `checkout` would get us there.
 
-### Apply `acceptSizeMax` to a history instead of single verisons
+### Apply `acceptSizeMax` to a history instead of single versions
 When pushing a dataset, the receiver is in charge of what they will accept. A remote can reject a push request for any reason. One of the primary reasons for rejecting a push is do to size constraints. Qri has a configuration value `remote.acceptSizeMax` that currently polices the maximium size of a dataset version. Any dataset version that exeeds this value is rejected by default.
 
 This RFC proposes changing the `remote.acceptSizeMax` value in configuration to apply to the on-disk size of _the entire dataset history_. As an example: if `acceptSizeMax` is `300Mb` that quota can be filled with one version that is `300Mb` in size, three totally unique `100Mb` versions, or any other combination where the deduplicated size of all versions is below the maximum threshold. 
@@ -176,7 +173,7 @@ In discussions we've come to realize that retention strategies are a major conce
 A _retention_ strategy is also a _replication_ strategy. Put another way: which versions peers choose to keep determines the versions availabile to the network.
 
 ### Remotes default to a `none` retention strategy
-If the user requests to push N versions for Y data size, the typical response is to accept all pushed verions, so long as the total disk space consumed is less than `remote.acceptSizeMax`. When a user tries to push a number of versions above the max,  `__ Mb` over the bar
+If the user requests to push N versions for Y data size, the typical response is to accept all pushed verions, so long as the total disk space consumed is less than `remote.acceptSizeMax`. When a user tries to push a number of versions above the max,  `__ Mb` over the bar, qri responds with an error and nothing is pushed.
 
 The way we actually solve that situation is the subject of another RFC on storage.
 
@@ -237,6 +234,11 @@ This can definitely be added later, and should be configurable.
 
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
+
+### Big pull warnings
+If we fetch logbook data before pulling version data, we can estimate the storage cost of an operation, and warn a user if it exceeds some configurable threshold before continuing. Two unanswered questions here: 
+* _grouped logsync fetching?_. We'd need a way to look at _all_ dependencies an operation would pull as a group, which would require logic to do the grouping instead of our current approach which tends to do atomic operations in loops
+* _how big is big?_ picking a default value for tripping the warning
 
 ### Push Permissions
 Currently we don't have an easy API for "I'll accept datasets from this person", which will be a prerequisite for any of this working. There's nuance here, and it's closely related to access control. I'll file a separate RFC for this, but the short version is we should use an simple configuration-based allow-list as a start, then layer on something more robust as part of a broader access control project.
