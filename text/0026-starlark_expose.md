@@ -1,7 +1,7 @@
 - Feature Name: Expose special function
-- Start Date: <!-- (fill me in with today's date, YYYY-MM-DD) -->
-- RFC PR: <!-- (leave this empty) -->
-- Issue: <!-- (leave this empty) -->
+- Start Date: 2019-06-23
+- RFC PR: [#43](https://github.com/qri-io/rfcs/pull/43)
+- Issue: 
 
 # Summary
 [summary]: #summary
@@ -42,7 +42,7 @@ The special function `expose` is a top-level entry point in Starlark scripts tha
       ...
 ```
 
-Similarily to how `transform` gets the results of `download` by accessing `ctx.download`, the results of `expose` are available as `ctx.expose`. This leads to a consistent access pattern, and also has the pleasant side-effect of not needing to change the signature of `download`.
+Similarly to how `transform` gets the results of `download` by accessing `ctx.download`, the results of `expose` are available as `ctx.expose`. This leads to a consistent access pattern, and also has the pleasant side-effect of not needing to change the signature of `download`.
 
 ### command-line
 
