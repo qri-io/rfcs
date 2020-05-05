@@ -1,6 +1,6 @@
 - Feature Name: delete and drop
-- Start Date: <!-- (fill me in with today's date, YYYY-MM-DD) -->
-- RFC PR: <!-- (leave this empty) -->
+- Start Date: 2020-05-02
+- RFC PR: [#53](https://github.com/qri-io/rfcs/pulls/53)
 - Issue: <!-- (leave this empty) -->
 
 # Summary
@@ -25,7 +25,7 @@ A well-documented desctrive command should be clearly labeled as the "opposite" 
 To improve our "undo UX", this RFC proposes three changes to qri CLI:
 1. rename `remove` to `delete`, clarify its text to talk about history instead of just storage
 2. Add an `amend` flag on the `save` command that _replaces_ the HEAD commit
-3. Add a new top-level command: `drop`, for dropping datasets from a remote
+3. Add a new top-level command: `drop`, for dropping datasets you don't own
 
 
 # Guide-level explanation
@@ -97,20 +97,31 @@ When a user understands these two things to be equal, it'll help solidfy their m
 
 
 ### the drop command
+Drop removes other people's datasets. By default drop operates on your local node, removing a dataset that you've pulled. Drop can be paired with the `--remote` flag to ask remotes to drop a dataset.
 
-The `drop` flag is a purpose-built answer to the "I want this off the internet" scenario. Drop joins `push` and `pull` as a family of active-verb commands that act on remotes:
+The `drop` flag answers two common scenarios:
+* "I was using this dataset and don't need it anymore": `$ qri drop user/dataset`
+* "I made a dataset, and want it off qri.cloud": `$ qri drop me/dataset --remote registry`
+
+Drop joins `push` and `pull` as a family of active-verb commands that describe a "me and them" interaction pattern.
 
 ```
 $ qri drop --help
-Drop asks a remote to completely remove a dataset, deleting history and stored 
-versions. Drop reverses a push.
+Drop removes datasets you've pulled. After running drop, a dataset will no
+longer show up in your local list, and all stored versions of that dataset will
+be deleted.
 
-Unlike push, drop does not use the registry as a default remote. To drop from 
-the registry, use "registry" as the remote name.
+Use the --remote flag to asks a remote to completely remove a dataset, 
+deleting history and stored versions. Drop with the remote flag reverses a push.
 
-Drop completely removes a dataset from a remote, which may not be what you'd
-like do do. If you want to...
-* remove a version from a remote:
+Drop only works on datasets you *don't* own. Use the delete command to remove
+datasets you've created.
+
+Drop completely removes a dataset, which may not be what you'd like do do. 
+If you want to...
+* delete a dataset you own:
+  $ qri delete me/dataset --all
+* remove a version from a remote, for a dataset you own:
   $ qri delete me/dataset --revisions 1
   $ qri push [remote] me/dataset
 * drop a specific version from a remote:
@@ -120,32 +131,54 @@ like do do. If you want to...
   $ qri push [remote] me/dataset
 
 Usage:
-  qri drop REMOTE [DATASET] [flags]
+  qri drop DATASET [DATASET...] [flags]
 
 Examples:
-  # Remove a dataset named `annual_pop` from the registry
-  $ qri drop registry me/annual_pop
+  # Drop a dataset you've pulled
+  $ qri drop user/dataset
+
+  # Drop a few datasets at once
+  $ qri drop user/dataset other_user/other_dataset other_user/another_dataset
+
+  # Remove a dataset from the registry
+  $ qri drop me/annual_pop --remote registry
+
+  # Remove a dataset from a remote you've pushed to named "sally"
+  $ qri drop me/annual_pop --remote sally
 
 Flags:
-  -h, --help               help for remove
-      --keep-files         don't modify files in working directory
-  -r, --revisions string   revisions to delete
+  -h, --help               help for drop
+      --remote             send a drop request to a remote
 ```
 
-Drop also solves a business-logic problem: anything we do "automatically" for a user on push needs to be undone when the user wants to go the other way. For example, we may choose to automatically set a dataset to list on their local node when they push to the registry.
+`drop` and `delete` have different audiences. `drop` is for data _consumers_, removing datasets they've pulled. `delete` is for data _authors_, correcting data they're pushing. Attempting to drop a dataset you own will error:
 
-Having an explicit "opposite of push" command allows us to write the converse business logic to whatever push does automatically, restoring the user to a clean state without having to resort to plumbing commands.
+```
+$ qri drop me/dataset
+error: cannot drop a dataset you own
 
-From the UX side, `drop` is also a chance to point users to other, more nuanced delete commands, and present a _big_ warning before they execute drop. These two together should help move users toward other commands that may match thier intent.
+because you are the author of this dataset, dropping it would remove the 
+authoritative history of this dataset. Instead of dropping, you can 
+delete this dataset:
 
-Knowing `drop` exists should make users more comfortable with `push`. A safe feeling that a user can `push, drop, push, drop...` should help users feel safe knowing their actions can be undone. We _do_ need to pay careful attention to language here, letting users know that once something's pushed, we can't control who's _already pulled it_.
+  $ qri delete --all me/dataset
+
+```
+
+Drop should do the opposite of a `pull` operation, removing from logbook, caches, and stroed versions. This solves a business-logic problem: anything we do "automatically" for a user on pull needs to be undone when the user wants to go the other way. Having an explicit "opposite of pull" command allows us to write the converse business logic to whatever pull does automatically, restoring the user to a clean state without having to resort to plumbing commands.
+
+From the UX side, `drop` is also a chance to point users to other, more nuanced delete commands, and present a _big_ warning before they execute drop. These two together should help move users toward other commands that may match thier intent. Drop intentionally doesn't work for data  _authors_, forcing them to use `delete`, which clarifies they're making edits that will affect _everyone_ that relies on this dataset.
+
+Knowing `drop` exists should make data authors more comfortable with `push`. A safe feeling that a user can `push, drop, push, drop...` should help users feel safe knowing their actions can be undone. We _do_ need to pay careful attention to language here, letting users know that once something's pushed, we can't control who's _already pulled it_.
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
 ### Use the logbook
-Delete actions should examine the history of a logbook to present warnings to a user that help them "clean up" when deleteing stuff. As an example: `$ qri delete --all` on a dataset should look for `push` operations and warn user they should `drop` from a list of remotes before deleting entirely.
+Delete actions should examine the history of a logbook to present warnings to a user that help them "clean up" when deleteing stuff. As an example: `$ qri delete --all` on a dataset should look for `push` operations and warn user they should `drop` from a list of remotes.
 
+### rename the `--drop` flag on `qri save`
+The current master branch has a `--drop` flag on the save command for "dropping components of a dataset". This RFC repurposes the `--drop` language to be about datasets you don't own, so this flag should be renamed to `--remove`. We shouldn't use `--delete`, because the word delete is now reserved for editing history.
 
 ### Corner Cases
 There are a few scenarios we should make a point writing tests for:
@@ -156,7 +189,7 @@ There are a few scenarios we should make a point writing tests for:
 # Drawbacks
 [drawbacks]: #drawbacks
 
-### Drop doesn't undo publication status
+### Drop + `--remote` doesn't undo publication status
 Another RFC currently has `qri push` to the registry automatically adding a "publish" step to the dataset, the drop command as presented here _doesn't_ undo this, leaving p2p visibility in list. Maybe we should present the user with a warning?
 
 # Rationale and alternatives
