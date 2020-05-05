@@ -1,6 +1,6 @@
 - Feature Name: access_command
-- Start Date: <!-- (fill me in with today's date, YYYY-MM-DD) -->
-- RFC PR: <!-- (leave this empty) -->
+- Start Date: 2020-05-02
+- RFC PR: [#54](https://github.com/qri-io/rfcs/pulls/54)
 - Issue: <!-- (leave this empty) -->
 
 # Summary
@@ -19,7 +19,7 @@ Publish is the only way to send datasets somewhere else, and the way publish is 
 * send encrypted data to the registry
 * ask a peer to _stop_ listing a dataset sent to them for others to see
 
-All are examples of _unlisted collaboration_, where _sending_ and _listing_ data are independant actions. Forcing these use cases through the `publish` command yields strange results (like having to "publish" encrypted data).
+All are examples of _unlisted collaboration_, where _sending_ and _listing_ data are independent actions. Forcing these use cases through the `publish` command yields strange results (like having to "publish" encrypted data).
 
 To accommodate more use cases, we should flip the mental model, prioritizing thinking about _where data is being sent_. `publish` should join a family commands for managing _access control_. Sending data to a public destination should imply public listing. In other words: publishing should be an automatic part of pushing, instead of pushing being an automatic part of publishing.
 
@@ -81,9 +81,9 @@ Unbpublish used to be a flag. In this RFC it's bumped up to a subcommand of it's
 
 ```
 $ qri access unpublish --help
-Unpublish reverses the publish process, removing a dataset from public view. 
-Unpublishing a dataset will try to "clean up", asking remotes this dataset has
-been published to
+Unpublish "unlists" a dataset. An unlisted dataset will not show up when
+browsing dataset lists or feeds. Others can still access an unpublished dataset
+if they know it's name.
 
 Unpublished datasets cannot be pushed to the registry, but can be pushed to
 peers that accept unpublished datasets from you.
@@ -92,7 +92,7 @@ Usage:
   qri access unpublish [DATASET] [DATASET...] [flags]
 
 Examples:
-  # unpublish a dataset, removing
+  # unpublish a dataset, removing it from any lists or feeds
   $ qri access unpublish me/dataset
 
   # Publish a few datasets:
@@ -103,7 +103,7 @@ Flags:
 ```
 
 
-Publish & Unpublish on their own may not seem like they warrent being moved into a subcommand. To understand the justification for the `access`, this is how `access` _might_ look one day, after we've landed encryption and role-based access control (RBAC) for datasets:
+Publish & Unpublish on their own may not seem like they warrant being moved into a subcommand. To understand the justification for the `access`, this is how `access` _might_ look one day, after we've landed encryption and role-based access control (RBAC) for datasets:
 
 ```
 $ qri access --help
@@ -169,6 +169,8 @@ setting dataset access to "published"... done.
 pushing 28 versions of chriswhong/some_dataset...
 X of XX blocks pushed for version 12 August 2019 (Qmss4h552h3j2h33)...
 ```
+
+Remotes, on the other hand _can_ accept unpublished datasets. Remote configuration will get a `requirePublish` configuration parameter to get the same registry-like behaviour. Pushing unpublished datasets is aimed at the collaborator use-case, where a datasets are explicitly pushed to trusted colleagues. when a user is pushed an unpublished dataset, it will show up when they run `qri list` locally, but this dataset won't be broadcast back to the network.
 
 † _encrypted datasets don't exist yet._
 
