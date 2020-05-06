@@ -1,5 +1,5 @@
 - Feature Name: Dataset Push & Pull
-- Start Date: 17-04-2020
+- Start Date: 2020-04-17
 - RFC PR: [#49](https://github.com/qri-io/rfcs/pull/49)
 - Issue: <!-- (leave this empty) -->
 
