@@ -1,3 +1,8 @@
+- Feature Name: Save, Dryrun, and Stdout
+- Start Date: 2020-04-09
+- RFC PR: [#48](https://github.com/qri-io/rfcs/pull/48)
+- Issue:
+
 # Summary
 
 Reassessing and understanding how save, dry-run, transforms, and FSI work together.
@@ -28,7 +33,7 @@ Let's go back to the very beginning.
 
 In the early days, it was decided that the right way to think about a `save` operation on a dataset that already existed was as a "patch application". Let's say I have a dataset named "dustomp/my_ds" that looks like this:
 
-![an example dataset](https://github.com/qri-io/rfcs/blob/rfc-xform/img/dataset_01.png)
+![an example dataset](./0027-assets/dataset_01.png)
 
 Then I run this command to create a second version:
 
@@ -38,7 +43,7 @@ Then I run this command to create a second version:
 
 What this means is "take my previous version, and *patch it* by updating the meta component with the contents of this file". Everything else in the dataset stays the same. In this way, a manual save operation acts as a state transition between versions by way of patching the previous to arrive at the next.
 
-![diagram of a patch application](https://github.com/qri-io/rfcs/blob/rfc-xform/img/dataset_02_patch_application.png)
+![diagram of a patch application](./0027-assets/dataset_02_patch_application.png)
 
 ## Transforms
 
@@ -47,16 +52,16 @@ When transform scripts were introduced, we needed a similar way to describe the 
 We went back and forth on this question, and ultimately arrived at the following functionality: a transform should only be executed on the commit where it gets added, and not every commit in the future, because the resulting dataset may not make sense to use as input to the same transform (think about a transform that adds or removes a column). However, if a user wanted to reapply the same transform, they could opt-in to that functionality by using the `--recall` flag, which would retrieve a recently rerun transform to run again.
 
 This transform changes the shape of the data, so it doesn't make sense to apply it again:
-![transform that changes shape](https://github.com/qri-io/rfcs/blob/rfc-xform/img/dataset_03_xform_diff_shape.png)
+![transform that changes shape](./0027-assets/dataset_03_xform_diff_shape.png)
 
 This transform keeps the same shape of the data; running it a second time makes sense:
-![transform that maintains shape](https://github.com/qri-io/rfcs/blob/rfc-xform/img/dataset_04_xform_same_shape.png)
+![transform that maintains shape](./0027-assets/dataset_04_xform_same_shape.png)
 
 Similar to a manual save, a transform script represents a state transition, with a reproducible method to execute that state transition, and a mechanism called "recall" to clone that state transition when applicable.
 
 A crucial fact about this description is that a manual save and a transform have the potential to conflict when used at the same time. Since they are both acting as state transitions, we need to ensure that the modifications introduced by each are able to compose together into a single change, in order to fit within our linear history of commits. Neither forking nor merging are allowed:
 
-![conflict due to two state transitions](https://github.com/qri-io/rfcs/blob/rfc-xform/img/dataset_05_conflict.png)
+![conflict due to two state transitions](./0027-assets/dataset_05_conflict.png)
 
 What this means in practice is that a save operation cannot have both a transform script and a manual change, via patch application, if they are modifying the same component.
 
@@ -75,7 +80,7 @@ Introduced next was filesystem integration, which would allow a user to "checkou
 
 The way this works is that we think of the working directory as being a staging area for a future commit. Since the checked out dataset is not immutable data like that in our repository store, its files are able to be modified. Not until the user issues `qri save` is the working directory turned into a commit; before then it is only a potential future state to transition to:
 
-![checkout to working directory](https://github.com/qri-io/rfcs/blob/rfc-xform/img/dataset_06_working_dir.png)
+![checkout to working directory](./0027-assets/dataset_06_working_dir.png)
 
 Furthermore, the type of "patch application" mentioned in the section about "Manual Save" no longer applies. Instead, we need to think about the Working Directory as representing a "full replacement" when a new version is created. So the codepath for `save` knows about both patch applications and full replacements when creating a new commit.
 
