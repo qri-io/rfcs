@@ -34,9 +34,9 @@ Theses are three distinct examples of removing versions, whole datasets, and rem
 2. introduce _read-only_ and _read-write_ as terms to describe our present dataset acces model.
 2. improve help text and error messages, guiding users toward different uses of remove.
 3. Add an `amend` flag on the `save` command that _replaces_ the HEAD commit
-4. Add a `--remote` flag to `delete` for dropping datasets on remotes
+4. Add a `--remote` flag to `remove` for dropping datasets on remotes
 
-A well-documented desctrive command should be clearly labeled as the "opposite" of a constructive command and present warnings _before_ execution. Once executed, commands remove data should show as few caveat/errors/warnings as possible, or at least connect caveats to a clear next course of action. A feeling of "clean state" comes when vommands like `qri log`, `qri list` and `qri status` match user expectations after running a destructive command.
+A well-documented destructive command should be clearly labeled as the "opposite" of a constructive command and present warnings _before_ execution. Once executed, commands removing data should show as few caveat/errors/warnings as possible, or at least connect caveats to a clear next course of action. A feeling of "clean state" comes when vommands like `qri log`, `qri list` and `qri status` match user expectations after running a destructive command.
 
 
 # Guide-level explanation
@@ -66,8 +66,8 @@ $ qri remove --help
 Remove deletes datasets from qri.
 
 For read-only datasets you've pulled from others, Remove gets rid of a dataset 
-from your qri node. After running remove, qri will no longer list your dataset 
-as being available locally, and will free up storage space.
+from your qri node. After running remove, qri will no longer list that dataset 
+as being available locally, and may free up the storage space.
 
 For datasets you can edit, remove deletes commits from a dataset history.
 Use delete to "correct the record" by erasing commits. Running remove on writable
@@ -87,7 +87,7 @@ Usage:
   qri remove DATASET [DATASET...] [flags]
 
 Examples:
-  # delete a dataset
+  # delete a dataset cloned from another user
   $ qri remove user/world_bank_population
 
   # delete the latest commit from annual_pop
@@ -104,7 +104,7 @@ Examples:
 
 
 Flags:
-   --keep-files       don't remove a working directory if one exists
+   --keep-files       don't modify or remove files in a working directory if one exists
    --force            override checks that prevent data loss
 ```
 
@@ -112,7 +112,7 @@ Flags:
 
 Running `save` with the `--amend` flag replaces the current HEAD with a new commit. This is pulled directly from git. 
 
-Adding an `--amend` flag has the UX advantage of working language that resembles "undo" directly into the save command, which users will be familiar with before they ever need `delete`. As a git user I (b5) learned to use `--amend` before `rebase`, which I admit wasn't great, but allowed me to stick with git long enough to understand what rebase did.
+Adding an `--amend` flag has the UX advantage of working language that resembles "undo" directly into the save command, which users will be familiar with before they ever need `remove`. As a git user I (b5) learned to use `--amend` before `rebase`, which I admit wasn't great, but allowed me to stick with git long enough to understand what rebase did.
 
 Users should come to think of `--amend` as a shortcut:
 
@@ -170,16 +170,13 @@ If you alter your logbook locally using qri remove, you can update the remote lo
 
 
 ### Use the logbook
-Delete actions should examine the history of a logbook to present warnings to a user that help them "clean up" when deleteing stuff. As an example: `$ qri remove --all` on a dataset should look for `push` operations and warn user they should `drop` from a list of remotes.
-
-### rename the `--drop` flag on `qri save`
-The current master branch has a `--drop` flag on the save command for "dropping components of a dataset". This RFC repurposes the `--drop` language to be about datasets you don't own, so this flag should be renamed to `--remove`. We shouldn't use `--delete`, because the word delete is now reserved for editing history.
+Delete actions should examine the history of a logbook to present warnings to a user that help them "clean up" when deleteing stuff. As an example: `$ qri remove --all` on a dataset should look for `push` operations and warn user they should `drop` from a list of remotes. This warning will abort the init operation, but can be ignored with `--force`.
 
 ### Corner Cases
 There are a few scenarios we should make a point writing tests for:
 * Running amend on a dataset with no commits (no history) is an error
 * a drop request for a dataset name that doesn't exist locally, but _does_ exist on the remote should not error. This implies remotes should prefer local reference resolution
-* Remotes _should_ accept altered InitIDs when an owner Pushes to them. If user creates `b5/population`, pushes, then `delete --all b5/population` locally, then creates a new dataset with the same `b5/population` name, and pushes again, that should work, completely replacing the history
+* Remotes _should_ uniquely identify datasets by their initID, rather than their name, when a new dataset is pushed to them. A name can be changed or reused while a initID can not. If user creates `b5/population`, pushes, then `delete --all b5/population` locally, then creates a new dataset with the same `b5/population` name, and pushes again, that should work, completely replacing the history
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -208,7 +205,7 @@ We do something similar now with `$ qri publish --unpublish ` now, and it's a vi
 # Prior art
 [prior-art]: #prior-art
 
-Heroku's `rollback` command plays an important UX inspiration for `drop`. Having a top level "go back" command is part of what makes working with heroku feel safe.
+Heroku's `rollback` command plays an important UX inspiration for `remove --remote`. Having a top level "go back" command is part of what makes working with heroku feel safe.
 
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
@@ -218,7 +215,7 @@ This RFC puts storage management out of scope.
 
 
 ### logbook garbage collection
-Running `qri remove --all` drops a bunch a storage and "caps off" a dataset history with a delete operation, preventing the dataset from showing up in list operations. Delete doesn't remove remove logbook data. We'll have to figure out a way to clean up the logbook itself with a plubming command of some sort.
+Running `qri remove --all` drops a bunch a storage and "caps off" a dataset history with a delete operation, preventing the dataset from showing up in list operations. Delete doesn't remove remove logbook data. We'll have to figure out a way to clean up the logbook itself with a plumbing command of some sort.
 
 ### A Restore Command
 It's also possible to "undelete" by re-opening the log, writing a new operation to the closed log. We haven't addressed if this sort of double-undo should be allowed. If so, it shouldn't be a top-level command. 
