@@ -25,12 +25,12 @@ To accommodate more use cases, we should flip the mental model, prioritizing thi
 
 The actual process of moving data around is the subject of another RFC on pushing and pulling. In this RFC we tackle how to manage publication status of a dataset.
 
-This RFC proposes four concrete changes:
-* create a new `access` subcommand to view & edit access control for users & datasets
-* move `publish` and `unpublish` into access, changing both commands to edit _only_ `list` visibility (not push data)
-* rename `publish/unpublish` to `visibile/hidden`.
-* add an `info` command under access to show access info for a dataset
-* pushing to the registry automatically runs "publish". dropping from the registry automatically unpublishes
+This RFC proposes five changes:
+1. create a new `access` subcommand to view & edit access control for users & datasets
+2. move `publish` and `unpublish` into access, changing both commands to edit _only_ `list` visibility (not push data)
+3. rename `publish/unpublish` to `visible/hidden`.
+4. add an `info` command under access to show access info for a dataset
+5. default to setting a dataset to `visible` on push to any remote
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
@@ -57,14 +57,14 @@ The old `publish` used to have a note talking about how it pushes data. This RFC
 ```
 $ qri access visible --help
 Visible makes your dataset publically visible to others. While online, peers 
-that connect to you can only see datasets and versions that you've published. 
-Making a datset a dataset always makes all previous history entries available, 
-and any updates to a visible dataset will be immediately visible. Published 
+that connect to you can only see datasets and versions that you've made visible. 
+Making a datset visible always makes all previous history entries available, 
+and any updates to a visible dataset will be immediately visible. Visible
 datasets will show up in feeds.
 
 New datasets are *not* visible by default, and remain hidden until pushed.
 
-Pushing to the registry requires a dataset be either encrypted or published.
+Pushing to the registry requires a dataset be either encrypted or visible.
 By default pushing a dataset to the registry also makes a dataset visible.
 
 Usage:
@@ -161,8 +161,10 @@ pull.
 
 `$ qri access info me/dataset` for now will only but it will be _very_ helpful for viewing dataset permsissions that control both who can access a dataset and what they can do with it.
 
-### Visible on registry push
-Pushing unencrypted datasets† to the registry _requires_ a dataset be visible. To keep the old behaviour of a one-liner publish, pushing to the registry will automatically run `$ qri access visible` on the user's behalf. The push command will present this as user feedback:
+### set visible on push
+Without setting a dataset to visible everyone (including the user) will not be able to see the pushed dataset in list operations on the remote after pushing. 
+
+To solve this, pushing an unencrypted dataset† to any remote makes it visible before pushing by default. This keeps the current (v0.9.8) behaviour of a one-liner publish, pushing to the registry will automatically run `$ qri access visible` on the user's behalf. The push command will present this as user feedback:
 
 ```
 $ qri push me/some_dataset
@@ -171,7 +173,23 @@ pushing 28 versions of chriswhong/some_dataset...
 X of XX blocks pushed for version 12 August 2019 (Qmss4h552h3j2h33)...
 ```
 
-Remotes, on the other hand _can_ accept hidden datasets. Remote configuration will get a `requireVisible` configuration parameter to get the same registry-like behaviour. Pushing hidden datasets is aimed at the collaborator use-case, where a datasets are explicitly pushed to trusted colleagues. when a user is pushed a hidden dataset, it will show up when they run `qri list` locally, but this dataset won't be broadcast back to the network.
+A `--hidden` flag on `push` overrides this behaviour, which will present a warning:
+```
+$ qri push me/some_datsaet --hidden
+warning:  you're pushing a hidden dataset, this dataset will not show up in list
+warning:  operations.
+pushing 28 versions of chriswhong/some_dataset...
+x of xx blocks pushed for version 12 August 2019 (Qmss4h552h3j2h33)...
+```
+
+Remotes that accept datasets can use a `requireVisible` configuration parameter to deny pushing hidden datasets entirely:
+
+```
+$ qri push me/some_dataset --hidden --remote peer
+error:  this remote does not accept hidden datasets
+```
+
+Pushing hidden datasets is aimed at the collaborator use-case, where a datasets are explicitly pushed to trusted colleagues. when a user is pushed a hidden dataset, it will show up when they run `qri list` locally, but this dataset won't be broadcast back to the network. Users can `pull` hidden datasets by name. The default registry will accept hidden datasets.
 
 † _encrypted datasets don't exist yet._
 
@@ -188,7 +206,7 @@ Later when we add access control, if you say "this dataset can _only_ be accesse
 [reference-level-explanation]: #reference-level-explanation
 
 ### The `Visible` field
-For some time we've modelled `published` as a boolean field outside the dataset itself, stored as a logbook operation. We've struggled with this field not capturing the problem of _where_ a dataset's been published. Re-conceiving the new `visible` field as a "permission bit" clarifies the intent of this field. Published now answers "can the existence of this dataset be broadcasted" for the _entire history_ of a dataset. 
+For some time we've modelled `published` as a boolean field outside the dataset itself, stored as a logbook operation. We've struggled with this field not capturing the problem of _where_ a dataset's been published. Re-conceiving the new `visible` field as a "permission bit" clarifies the intent of this field. Published now answers "can the existence of this dataset be broadcasted" for the _entire history_ of a dataset. visibility changes are recorded as logbook operations.
 
 ### Corner cases
 A few extra bullet points to consider while we're implementing this:
