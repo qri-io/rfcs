@@ -225,3 +225,21 @@ This RFC doesn't deal with how `qri storage drop` would affect other, non-IPFS f
 
 ### Specifying version ranges
 The version presented here only permits dropping one commit at a time. Ideally we could specify a _range_ of versions to drop at once. git has the `..` syntax for this. We should add a spec for doing version ranges in a future RFC.
+
+### Garbage Collection
+In the future we hope to write a `qri storage gc` command that works a lot like `docker system prune`. Some possible examples:
+
+```
+$ qri storage gc me/dataset
+```
+Removes the blocks from that dataset that have been unpinned
+
+```
+$ qri storage gc me/dataset@version
+```
+Removes the blocks of that version if it's been unpinned?
+
+```
+$ qri storage gc --all
+```
+Removes all unpinned blocks??
