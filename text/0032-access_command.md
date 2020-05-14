@@ -96,7 +96,7 @@ Examples:
   # unpublish a dataset, removing it from any lists or feeds
   $ qri access hidden me/dataset
 
-  # Publish a few datasets:
+  # Unpublish a few datasets:
   $ qri access hidden me/dataset me/other_dataset
 ```
 
@@ -171,7 +171,7 @@ You have read-write access to this dataset, because you created it.
 `$ qri access info me/dataset` for now will only but it will be _very_ helpful for viewing dataset permsissions that control both who can access a dataset and what they can do with it.
 
 ### default to setting "visible" on initial push
-When a dataset has no `visibility` operations in it's log, it's `visibility` value is `unknown`. We explicitly model visibility as a _tri-state_: `[unset, visibile, hidden]`. So commands like push can make a one-time inference on bahalf of the user. Once the visible property on a dataset is assigned, it cannot return to the `unset` state.
+When a dataset has no `visibility` operations in it's log, it's `visibility` value is `unknown`. We explicitly model visibility as a _tri-state_: `[unset, visibile, hidden]`. So commands like push can make a one-time inference on behalf of the user. Once the visible property on a dataset is assigned, it cannot return to the `unset` state.
 
 Pushing an unencrypted dataset† to any remote with an `unset` visibility value should first should make it `visible` before pushing. This keeps the current (v0.9.8) behaviour of a one-liner publish. pushing to a remote will automatically run `$ qri access visible` on the user's behalf. The `push` command should present this as user feedback:
 
@@ -257,3 +257,8 @@ With two states we have no way of knowing if the user _intended_ the present `vi
 
 ### An "Access" Data Structure
 This RFC describes `visible` as a _permissions flag_. At some point we should be looking to build a data structure that describes permissions. `Visible` might be a field on that data structure. The challenge here: permissions will apply to, what, users? groups? Needs more thought.
+
+
+### Remotes know "who is asking"
+
+Long term, we should be driving the identity of the peer making a request deeper into remote behavior. We'll need this as a part of access control, but it could also remove the need for the "you're pushing a hidden dataset" warning, because remotes can show users lists contextualized to their identities, and can show the hidden datasets they've pushed (aka: a list that is specific to a given user)
