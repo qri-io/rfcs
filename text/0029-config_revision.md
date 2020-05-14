@@ -11,12 +11,12 @@ Revise configuration fields with clear descriptions, removing unused fields, and
 # Motivation
 [motivation]: #motivation
 
-Our configuration story needs work. _Many_ fields are not in use, and there's ambiguity about how 
+Our configuration story needs work. _Many_ fields are not in use, and there's ambiguity about how others should work. Cleaning up our configuration story should open up new use cases & cut down on confusion.
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-This RFC proposes a the following concrete changes:
+This RFC proposes the following concrete changes:
 1. Overhaul configuration data structures, removing unnecessary fields & adding new ones
 1. Support configuring `qfs.Filesystem`
 1. Formalize the hierarchy of different configuration sources
@@ -101,7 +101,7 @@ Revision: 2
 
 ### The Filesystems field
 
-Qri is built atop a filesystem abstraction called [qfs](https://github.com/qri-io/qfs) that defines a common interface with numerous implementations. At runtime, qri composes a number of these filesystems together to provide access to HTTP assets, local files, and IPFS data. In qri v0.9.8, the `qfs.Filsystem` instance cannot be configured. 
+Qri is built atop a filesystem abstraction called [qfs](https://github.com/qri-io/qfs) that defines a common interface with numerous implementations. At runtime, qri composes a number of these filesystems together to provide access to HTTP assets, local files, and IPFS data. In qri v0.9.8, the `qfs.Filsystem` instance cannot be configured.
 
 This RFC proposes a format for configuring the qfs.Filesystem. Making qfs configurable opens the doors to new backing filesystems like Amazon S3, opening the door to operating Qri in new contexts entirely through configuration.
 
@@ -134,7 +134,7 @@ The source value is itself a filesystem path. In this case we're loading over ht
 ### Use multiaddrs, port 0 for random open port
 We should switch all `port` fields to an `address` field instead, and accept a [multiaddr](https://github.com/multiformats/go-multiaddr) string to enhance configurability.
 
-In addition, we should support the convention of using `0` as a port number to indicate "any open port", allowing the operating system to choose.
+In addition, we should support the convention of using `0` as a port number to indicate "any available port", allowing the operating system to choose.
 
 
 # Reference-level explanation
@@ -173,7 +173,7 @@ config = fold_left(defaultConfig(), getEnvVarConfig(), getCLIConfig())
 When using qri as a library, we don't have the `cmd` package, and often supply configuration details directly.
 
 ```
-config = fold_left(defaultConfig(), getEnvVarConfig())
+config = fold_left(defaultConfig(), getUserOfLibraryConfig())
 ```
 
 ### Remove stale configuration fields
@@ -220,10 +220,14 @@ The first win: users could remove `local` or `http` to disable qri's access to t
 
 We could use a convention of the default write destination being the first listed filesystem, and present a big warning if users configure anything other than `ipfs` in the first position.
 
-It'd be great to delegate this entire section of store setup to the qfs package, aliasing up the conguration data structure into the config package.
+It'd be great to delegate this entire section of store setup to the qfs package, aliasing up the configuration data structure into the config package.
+
+### Moving past cafs
+
+Config has a "Store" field that configured a _content addressed file system_ (CAFS), cafs is the precursor to `qfs.Filesystem`, and is in the process of being merged into this API. The `Filesystems` field is used to consutrct a `qfs.Muxfs` multiplexing filesystem at runtime. Muxfs will provide methods for accessing individual filesystems, where ones like `ipfs` still satisfy the `cafs` interface. It'll be possible to progressively migrate code that requires a `cafs`  toward a `qfs.Filesystem` while we work on configuration changes.
 
 ### move IPFS repo location into configuration
-the above filesystem example shows a `ipfs` filesystem type with a `config.path` field. This value should now the be canonical source of where to load.
+the above filesystem example shows a `ipfs` filesystem type with a `config.path` field. This value should now be the canonical source of where to load.
 
 the global `ipfs-path` flag should also be removed:
 ```
@@ -249,7 +253,7 @@ This is the total list of environment variables qri is sensitive to:
 
 _note: I (b5) haven't had a chance to vet our dependencies for env vars they are sensitive to, so this list is only complete for the purpose of this RFC._
 
-This RFC proposes environment variables are _not_ a direct source of configuration. Instead environment variables either point to a path to load configuration from, or contain a payload to create an initial configuration file.
+This RFC proposes environment variables are _not_ a direct source of configuration. Instead environment variables either point to a path to load configuration from, or contain a payload to create an initial configuration file. 
 
 `QRI_SETUP_CONFIG_DATA` as the only supported is only honored by `qri setup`. We need `SETUP` env variables for operating within containerized contexts, but that's about it.
 
@@ -257,7 +261,7 @@ Directing as much configuration as possible to a configuration file cuts down on
 
 Instead of supporting a potential `QRI_PAGER` environment variable, we should _only_ have `qri.cli.pager` to override the default value.
 
-All that said, using env var configuration should be _optional_, meaning a user employing qri as a library can provide an option to the `lib.NewInstance` constructor function that ignores all environment variables.
+All that said, using env var configuration should be _optional_, meaning a user employing qri as a library can provide an option to the `lib.NewInstance` constructor function that ignores all environment variables. Put another way: environment variables never affect configuration, which is a lib-level concept, but as a caller of lib, the command-line client `qri` is able to use them in order to create the configuration that it wants.
 
 # Drawbacks
 [drawbacks]: #drawbacks
