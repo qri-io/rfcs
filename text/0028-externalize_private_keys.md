@@ -1,12 +1,12 @@
 - Feature Name: Externalize Private Keys
-- Start Date: <!-- (fill me in with today's date, YYYY-MM-DD) -->
-- RFC PR: <!-- (leave this empty) -->
+- Start Date: 2019-04-30
+- RFC PR: [#52](https://github.com/qri-io/rfcs/pull/52)
 - Issue: <!-- (leave this empty) -->
 
 # Summary
 [summary]: #summary
 
-Separate Qri user private key from configuration, storing in the operating system's keyring, or superceeded by an envrionrment variable `QRI_PRIVATE_KEY`.
+Separate Qri user private key from configuration, storing in the operating system's keyring, or superseded by an environment variable `QRI_PRIVATE_KEY`.
 
 # Motivation
 [motivation]: #motivation
@@ -20,7 +20,7 @@ More importantly, storing private keys in configuration is a security vulnerabil
 
 We inherited this bad habit of storing private keys in configuration as a "deal with it later" approach taken from IPFS, unlike Qri, IPFS identities are not "significant" in the sense that it's not tied to an identity intended for humans. Tying an identity to a private key means we need to deal with this problem much earlier.
 
-This RFC deprecates `profile.privKey` config value, moving the the private key to the user's operating system keyring. When no keyring is available, store the keyring in a seperate file called `QRI_PRIVATE_KEY` within the `.qri` directory, and present the user with a warning that they should copy this file to a safe location.
+This RFC deprecates `profile.privKey` config value, moving the the private key to the user's operating system keyring. When no keyring is available, store the keyring in a separate file called `QRI_PRIVATE_KEY` within the `.qri` directory, and present the user with a warning that they should copy this file to a safe location.
 
 In all cases the active private key can be overridden with an environment variable: `QRI_PRIVATE_KEY`. In all cases the key is expected to be a base64-encoded string.
 
@@ -72,7 +72,7 @@ listing available private keys in a keyring may also form the basis of profile s
 ### More OS-Specific Work.
 This increases our reliance on an OS-level API that sometimes doesn't exist, and runs the risk of deviating behaviour between platforms. 
 
-Fallback to a `QRI_PRIVATE_KEY` file whenever no keyring exists is necessary to keep things working when our keyring implementation fails, effectivly reverting us back to the setup we're in today. This time we at least have a separate file and a warning.
+Fallback to a `QRI_PRIVATE_KEY` file whenever no keyring exists is necessary to keep things working when our keyring implementation fails, effectively reverting us back to the setup we're in today. This time we at least have a separate file and a warning.
 
 ### Upstream work to get recovery functionality
 The package I've suggested we build on has no high-level method for listing the keys in a namespace. We'e need to be able to do this, and haven't confirmed this will be possible across all platforms.
