@@ -30,7 +30,7 @@ This RFC proposes five changes:
 2. move `publish` and `unpublish` into access, changing both commands to edit _only_ `list` visibility (not push data)
 3. rename `publish/unpublish` to `visible/hidden`.
 4. add an `info` command under access to show access info for a dataset
-5. default to setting a dataset to `visible` on push to any remote
+5. default to setting a dataset to `visible` on push to any remote if no visibility is set.
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
@@ -94,15 +94,11 @@ Usage:
 
 Examples:
   # unpublish a dataset, removing it from any lists or feeds
-  $ qri access unpublish me/dataset
+  $ qri access hidden me/dataset
 
   # Publish a few datasets:
-  $ qri access unpublish me/dataset me/other_dataset
- 
-Flags:
-  -r, --remove     issue "remove all" commands to any published remotes
+  $ qri access hidden me/dataset me/other_dataset
 ```
-
 
 `visible` & `hidden` on their own may not seem like they warrant being moved into a subcommand. To understand the justification for the `access`, this is how `access` _might_ look one day, after we've landed encryption and role-based access control (RBAC) for datasets:
 
@@ -132,23 +128,25 @@ Usage
   qri access info [DATASET] [DATASET...]
 ```
 
-An example output for a published dataset:
+An example output for a read-write dataset:
 ```
 $ qri access info me/dataset
-can-edit:  true
+read:      true
+write:     true
 visible:   true
 
-You can edit this dataset.
+You have read-write access to this dataset, because you created it.
 
 This dataset is visible. Other users may see it when you're online, and if
 pushed to the registry it will show up in feeds for other users to browse and
 pull.
 ```
 
-An example for a dataset you _don't_ own:
+An example for a read-only dataset pulled from another user:
 ```
 $ qri access info ca-state-parks/park-features
-can-edit:  false
+read:      true
+write:     false
 visible:   true
 
 You cannot edit this dataset, attempting to save to its history will create a 
@@ -159,12 +157,23 @@ pushed to the registry it will show up in feeds for other users to browse and
 pull.
 ```
 
+A brand new dataset has no visibilty operations in it's log. It's `visibility` property is `unset`. More on this in the next section.
+
+```
+$ qri access info me/brand_new_dataset
+read:      true
+write:     true
+visible:   unset
+
+You have read-write access to this dataset, because you created it.
+```
+
 `$ qri access info me/dataset` for now will only but it will be _very_ helpful for viewing dataset permsissions that control both who can access a dataset and what they can do with it.
 
-### set visible on push
-Without setting a dataset to visible everyone (including the user) will not be able to see the pushed dataset in list operations on the remote after pushing. 
+### default to setting "visible" on initial push
+When a dataset has no `visibility` operations in it's log, it's `visibility` value is `unknown`. We explicitly model visibility as a _tri-state_: `[unset, visibile, hidden]`. So commands like push can make a one-time inference on bahalf of the user. Once the visible property on a dataset is assigned, it cannot return to the `unset` state.
 
-To solve this, pushing an unencrypted dataset† to any remote makes it visible before pushing by default. This keeps the current (v0.9.8) behaviour of a one-liner publish, pushing to the registry will automatically run `$ qri access visible` on the user's behalf. The push command will present this as user feedback:
+Pushing an unencrypted dataset† to any remote with an `unset` visibility value should first should make it `visible` before pushing. This keeps the current (v0.9.8) behaviour of a one-liner publish. pushing to a remote will automatically run `$ qri access visible` on the user's behalf. The `push` command should present this as user feedback:
 
 ```
 $ qri push me/some_dataset
@@ -173,26 +182,29 @@ pushing 28 versions of chriswhong/some_dataset...
 X of XX blocks pushed for version 12 August 2019 (Qmss4h552h3j2h33)...
 ```
 
-A `--hidden` flag on `push` overrides this behaviour, which will present a warning:
+Defaulting to `visible` avoids a potential UX problem when a dataset is pushed: without setting a dataset to visible everyone (including the user) will not be able to see the pushed dataset in list operations on the remote after pushing. Users who want to push hidden datasets should first make them hidden with `$ qri access hidden`, then push. Pushing a hidden dataset should present a warning:
+
 ```
-$ qri push me/some_datsaet --hidden
+$ qri access hidden me/some_dataset
+$ qri push me/some_dataset
 warning:  you're pushing a hidden dataset, this dataset will not show up in list
-warning:  operations.
+warning:  operations on the destination remote
 pushing 28 versions of chriswhong/some_dataset...
 x of xx blocks pushed for version 12 August 2019 (Qmss4h552h3j2h33)...
 ```
 
-Remotes that accept datasets can use a `requireVisible` configuration parameter to deny pushing hidden datasets entirely:
+Pushing hidden datasets is aimed at the small-group colloaboration use-case, where a datasets are explicitly pushed to trusted colleagues. When a remote receives a hidden dataset, it will show up when they run `qri list` locally, but this dataset won't be broadcast back to the network. Users can `pull` hidden datasets by name, and communicate hidden dataset names to each other outside of qri. The default registry will accept hidden datasets.
+
+Because the `visible` property is held in logbook operations, users can flip between `hidden` & `visible` without a problem, and push to remotes, who will reflect that change.
+
+Remotes can use a `requireVisible` configuration parameter to deny pushing hidden datasets entirely:
 
 ```
 $ qri push me/some_dataset --hidden --remote peer
 error:  this remote does not accept hidden datasets
 ```
 
-Pushing hidden datasets is aimed at the collaborator use-case, where a datasets are explicitly pushed to trusted colleagues. when a user is pushed a hidden dataset, it will show up when they run `qri list` locally, but this dataset won't be broadcast back to the network. Users can `pull` hidden datasets by name. The default registry will accept hidden datasets.
-
-† _encrypted datasets don't exist yet._
-
+† _encrypted datasets don't exist yet. Once such a thing exists, there will be cases where the `unset` value can behave like `push`, but automatically set to `hidden` instead. A `$ qri access encrypt` command would do this, as would something like `$ qri init --encrypted`. All situations would set visbility by writing a visibility operation to the dataset log._
 
 ### Visible means visible _everywhere_
 In the past we've had permissions tied to a dataset/remote combination. As an example I could "publish" to a registry and that registry would have it.
@@ -227,6 +239,11 @@ Access control is really irritating.
 Instead of the publish/unpublish terminology, we could use a more direct reference to list visibility. We can't use `list` directly because `qri access list` should be the command for listing all access-controlled datasets (if such a thing turns out to be necessary). An alternative would be to use a different conjucation or tense for list like "listed" & "unlisted". using a past tense is the best I could come up with, and in my opinion `$ qri access listed` isn't very memorable, and feels like your asking about things that have been listed in the past?
 
 The other thing to keep in mind: hidden datasets shouldn't show up in feeds. The registry requires "published: true", but feeds built on the peer-2-peer network won't. Peers building feeds should only use datasets that are published. 
+
+### model visibility as two states, omitting "unset"
+This RFC proposes using three states for visible. The third state is somewhat irritating to work with. It also creates a potential point of confusion for the user.
+
+With two states we have no way of knowing if the user _intended_ the present `visible/hidden` value. If, for example, we defaulted to `hidden` instead of `unset`, we have to either ask the user to reaffirm their choice every time (via something like a `--hidden` flag on `push`), or explicitly require the user to set visibilty (aka don't do inference). Having the third state let's qri perform inference once based on the command in question, then get out of the way.
 
 # Prior art
 [prior-art]: #prior-art
