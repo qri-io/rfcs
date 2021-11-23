@@ -7,7 +7,7 @@ Although we cannot truly eliminate the unpredictable effects of http fetching, w
 
 ## Capture
 
-When a script performs http fetching, if that request is executed without additional support, then important information gets lost. That is, the http request and response don't live longer than the script's execution. Rather, the script requests some url, uses what it needs from the response to generate or modify its dataset, and throws away everything else. Anyone in the future trying to audit that script has no way of validating that the script actually did what it claims to have done. All that is observable is the previous dataset version, the script's contents, and the next dataset version that was created. Information about the http request and response is gone.
+When a script performs http fetching, if that request is executed without additional support, then important information gets lost. That is, the http request and response don't live longer than the script's execution. Rather, the script requests some url, uses what it needs from the response to generate or modify its dataset, and throws away everything else. Anyone in the future trying to audit that transformation has no way of validating that the code actually did what it claims to have done. All that is observable is the previous dataset version, the script's contents, and the next dataset version that was created. Information about the http request and response is gone.
 
 This is problematic for multiple reasons. Http responses are by nature ephemeral. It's possible that responses can change at any time. It's even possible in the worst case that a dishonest actor may setup their own end-point that sends a response with whatever data they want to receive. Imagine a nefarious actor trying to fake some important result by claiming some http server gave them some data at a certain point in time; it's difficult to disprove this when the http response cannot be inspected after the fact.
 
@@ -17,7 +17,17 @@ The way that qri can solve this is by capturing http responses and saving it loc
 
 When developing scraping tools, it is common to request http data from a server, then write code iteratively that processes this data in some manner. It can be very frustrating to rerun a script that has been recently modified and see different results, unsure whether its due to code changes or the http server returning something different. Http responses change often, perhaps because the backend in question has new data, or because the responses contain dynamic content, or because the server is treating the client differently due to making too many requests. Programming against data that is not stable is like trying to paint on a canvas that is moving around.
 
-Once the http response has been captured, it can be replayed automatically. Clients do not need to manually save response text and operate on it on their own. Instead the script environment can transparently return this same result, allowing the programmer to iterate their code as much as needed until development is complete. Once the code is stabilized, replaying can stop, so  that future http requests are allowed to be sent as normal to the external endpoint in order to get new data. But even in this case, the captured response allows qri to take advantage of http caching mechanisms like etags and the if-modified-since header.
+Once the http response has been captured, it can be replayed automatically. Clients do not need to manually save response text and operate on it on their own. Instead the script environment can transparently return this same result, allowing the programmer to iterate their code as much as needed until development is complete. Once the code is stabilized, replaying can stop, so that future http requests are allowed to be sent as normal to the external endpoint in order to get new data.
+
+## Performance gains
+
+While a script is being developed, but also afterwards while it is being shared and used by others, it very quickly becomes inefficient to rerun the same http operations over and over again. Especially in the case of examples within documentation, certain scripts are going to be executed by huge numbers of users, potentially hammering some remote server. Capturing requests using a centralized service can help to completely eliminate these inefficiencies. In the case of Qri Cloud, we can be even more aggressive, and prefetch urls as soon as they are typed, before a transform is explicitly run. This could make for a very plesant user experience, making http appear to fetch instantaneously.
+
+Of course many scripts will be written over time, and they are going to use unique urls, which do not want to be replayed, as their developers will want live data all of the time. But even in these cases, the captured response allows qri to take advantage of http caching mechanisms like etags and the if-modified-since header. This will make the qri transform engine behave more like a web browser, efficiently working to manage its traffic intake.
+
+## Testing is easier
+
+One final benefit is that it's much easier to test scripts that use HTTP calls. Having tests that require network access is a bad idea: both because it adds an uncontrollable external dependency, and adds new failures modes. Once capture is happening, it becomes nearly trivial to also mock http responses from test code.
 
 ## UX considerations
 
